@@ -1,8 +1,8 @@
 # LexiGen
 
-![LexiGen Logo](https://github.com/gitmichaelqiu/LexiGen/blob/main/Lexi.png?raw=true)
-
 <div align="center">
+
+![LexiGen Logo](https://github.com/gitmichaelqiu/LexiGen/blob/main/Lexi.png?raw=true)
 
 An AI-powered desktop application for generating educational fill-in-the-blank sentences.
 
