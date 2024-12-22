@@ -1,6 +1,6 @@
 # LexiGen
 
-![LexiGen Logo](/lexi.png)
+![LexiGen Logo](https://github.com/gitmichaelqiu/LexiGen/blob/main/Lexi.png?raw=true)
 
 <div align="center">
 
