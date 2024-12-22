@@ -96,4 +96,6 @@ LexiGen is open source software licensed under the [GNU General Public License v
 
 <div align="center">
 Made for educators and learners
+
+If you like this project, please consider giving me a star ⭐️
 </div>
