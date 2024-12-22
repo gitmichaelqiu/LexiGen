@@ -1,6 +1,6 @@
 # LexiGen
 
-![LexiGen Logo](lexi.png)
+![LexiGen Logo](/lexi.png)
 
 <div align="center">
 
