@@ -32,11 +32,8 @@ LexiGen transforms vocabulary practice and language learning by automatically ge
 ### Prerequisites
 
 1. Install [Ollama](https://ollama.com)
-2. Launch the Ollama server or run Ollama app:
-   ```bash
-   ollama serve
-   ```
-3. Install a compatible model (e.g. qwen2.5:3b):
+2. Launch the Ollama app
+3. Open the terminal (Windows: press `Windows + R`, then type `cmd`) and install a compatible model (e.g. qwen2.5:3b):
    ```bash
    ollama pull qwen2.5:3b
    ```
