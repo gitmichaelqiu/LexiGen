@@ -14,6 +14,8 @@ An AI-powered desktop application for generating educational fill-in-the-blank s
 
 ## 🎯 Overview
 
+"Lexi" comes from "lexicon".
+
 LexiGen transforms vocabulary practice and language learning by automatically generating contextual fill-in-the-blank sentences. Leveraging Ollama's AI models, it creates engaging educational materials with just a few clicks.
 
 ## ✨ Key Features
