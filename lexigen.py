@@ -12,27 +12,194 @@ from nltk.stem import WordNetLemmatizer
 from nltk.corpus import wordnet
 import threading
 
-def initialize_nltk():
-    """Initialize NLTK data in a separate thread."""
-    try:
-        # Try to load wordnet
+# Version information
+VERSION = "1.1.0"
+
+def initialize_nltk(root):
+    """Initialize NLTK data."""
+    def is_nltk_downloaded():
         try:
-            nltk.data.find('corpora/wordnet')
-        except LookupError:
-            print("Downloading NLTK data (this may take a moment)...")
+            # Try to actually use WordNet to verify it's properly installed
+            wordnet.synsets('test')
+            return True
+        except (LookupError, ImportError, AttributeError):
+            return False
+
+    def create_download_dialog():
+        dialog = tk.Toplevel(root)
+        dialog.title("Downloading Required Data")
+        dialog.transient(root)
+        dialog.grab_set()
+        
+        # Make dialog modal
+        dialog.protocol("WM_DELETE_WINDOW", lambda: None)  # Disable close button
+        
+        # Center the dialog
+        dialog.geometry("300x150")
+        x = root.winfo_x() + (root.winfo_width() - 300) // 2
+        y = root.winfo_y() + (root.winfo_height() - 150) // 2
+        dialog.geometry(f"+{x}+{y}")
+        
+        # Create and pack widgets
+        frame = ttk.Frame(dialog, padding="20")
+        frame.pack(fill=tk.BOTH, expand=True)
+        
+        message = ttk.Label(frame, text="Downloading NLTK data...\nThis may take a few moments.")
+        message.pack(pady=(0, 10))
+        
+        progress = ttk.Progressbar(frame, mode='indeterminate')
+        progress.pack(fill=tk.X, pady=(0, 10))
+        progress.start()
+        
+        ok_button = ttk.Button(frame, text="OK", state="disabled")
+        ok_button.pack(pady=(10, 0))
+        
+        return dialog, message, progress, ok_button
+
+    def download_nltk_data(dialog, message, progress, ok_button):
+        try:
             nltk.download('wordnet', quiet=True)
             nltk.download('omw-1.4', quiet=True)
-            print("NLTK data download complete.")
-    except Exception as e:
-        print(f"Warning: Failed to initialize NLTK data: {str(e)}")
-        print("The application will still work, but word variation detection might be limited.")
+            
+            if is_nltk_downloaded():
+                progress.stop()
+                message.configure(text="Download completed successfully!")
+                ok_button.configure(state="normal", command=dialog.destroy)
+                return True
+            else:
+                raise Exception("Failed to verify NLTK data installation")
+        except Exception as e:
+            progress.stop()
+            message.configure(text=f"Error: {str(e)}\n\nWord variation detection will be limited.")
+            ok_button.configure(state="normal", command=dialog.destroy)
+            return False
+
+    # Check if NLTK is already downloaded and working
+    if is_nltk_downloaded():
+        return True
+        
+    # Create and show download dialog
+    dialog, message, progress, ok_button = create_download_dialog()
+    
+    # Start download in a separate thread
+    download_thread = threading.Thread(
+        target=lambda: download_nltk_data(dialog, message, progress, ok_button)
+    )
+    download_thread.daemon = True
+    download_thread.start()
+    
+    # Wait for dialog to close
+    root.wait_window(dialog)
+    
+    # Check again if download was successful
+    return is_nltk_downloaded()
+
+def get_word_variations(word):
+    """Get word variations using NLTK WordNet."""
+    if not hasattr(get_word_variations, 'lemmatizer'):
+        get_word_variations.lemmatizer = WordNetLemmatizer()
+    
+    word = word.lower()
+    variations = {word}  # Start with the original word
+    
+    print(f"\nAnalyzing word: {word}")
+    
+    # Try to find base form (infinitive for verbs)
+    base_form = wordnet.morphy(word)
+    if base_form:
+        variations.add(base_form)
+        print(f"Base form: {base_form}")
+    else:
+        base_form = word
+    
+    # Get all synsets for the word
+    all_synsets = wordnet.synsets(word)
+    print(f"Direct synsets: {[s.name() for s in all_synsets]}")
+    
+    # Process each synset
+    for synset in all_synsets:
+        print(f"\nProcessing synset: {synset.name()}")
+        # Only process lemmas that match our word exactly
+        for lemma in synset.lemmas():
+            if lemma.name().lower() == word:  # Only process exact matches
+                print(f"  Processing variations for: {lemma.name()}")
+                variations.add(lemma.name().lower())
+                
+                # Get derivationally related forms
+                deriv_forms = lemma.derivationally_related_forms()
+                if deriv_forms:
+                    print(f"  Derivational forms: {[d.name() for d in deriv_forms]}")
+                    variations.update(d.name().lower() for d in deriv_forms)
+    
+    # Try to find verb forms if it's a verb
+    verb_base = wordnet.morphy(word, 'v')
+    if verb_base and verb_base == word:  # Only if the base form matches our word
+        # Add common verb forms
+        variations.update([
+            word + 'ing',  # present participle
+            word + 's',    # 3rd person singular
+            word + 'ed'    # past tense
+        ])
+        
+        # Handle special cases for verbs ending in 'e'
+        if word.endswith('e'):
+            variations.add(word[:-1] + 'ing')  # e.g., 'take' -> 'taking'
+        
+        # Get verb synsets specifically to find irregular forms
+        verb_synsets = wordnet.synsets(word, pos='v')
+        for synset in verb_synsets:
+            for lemma in synset.lemmas():
+                if lemma.name().lower() == word:  # Only process exact matches
+                    # Try to get irregular forms
+                    for form in lemma.derivationally_related_forms():
+                        variations.add(form.name().lower())
+    
+    # Also check common adjective forms if they exist in WordNet
+    adj_forms = [word + 'ic', word + 'ical', word + 'ous']
+    for adj in adj_forms:
+        if wordnet.synsets(adj):
+            print(f"Found adjective form: {adj}")
+            variations.add(adj)
+    
+    # Remove any empty strings or None values
+    variations = {v for v in variations if v}
+    
+    print(f"\nFinal variations for {word}: {sorted(variations)}")
+    
+    return variations
 
 class LexiGen:
     def __init__(self, root):
         self.root = root
-        self.lemmatizer = WordNetLemmatizer()
-        self.root.title("LexiGen - Fill-in-the-Blank Generator")
+        self.root.title(f"LexiGen v{VERSION} - Fill-in-the-Blank Generator")
         self.root.geometry("1000x800")
+        
+        # Setup basic UI first
+        self.setup_ui()
+        
+        # Initialize NLTK in background
+        self.nltk_ready = False
+        self.root.after(1000, self.init_nltk)
+        
+        # Check for updates in background
+        self.root.after(2000, lambda: self.check_for_updates(show_message=False))
+
+    def init_nltk(self):
+        """Initialize NLTK after the main UI is ready."""
+        self.nltk_ready = initialize_nltk(self.root)
+        if self.nltk_ready:
+            self.lemmatizer = WordNetLemmatizer()
+        else:
+            # Retry after a delay if download window was shown
+            self.root.after(2000, self.init_nltk)
+
+    def setup_ui(self):
+        """Setup the main UI components."""
+        # Create styles for update button
+        self.style = ttk.Style()
+        self.style.configure("Update.TButton", foreground="black")
+        self.style.configure("UpdateAvailable.TButton", foreground="blue")
+        self.style.configure("UpToDate.TButton", foreground="gray")
         
         # Ollama API Configuration
         self.api_url = "http://127.0.0.1:11434/api/generate"
@@ -52,17 +219,21 @@ class LexiGen:
         self.settings_frame = ttk.LabelFrame(self.main_container, text="Settings", padding="5")
         self.settings_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
         
+        # Version Label (left-aligned)
+        version_label = ttk.Label(self.settings_frame, text=f"v{VERSION}", foreground="gray")
+        version_label.grid(row=0, column=0, padx=5, sticky=tk.W)
+        
         # API URL Entry
-        ttk.Label(self.settings_frame, text="API URL:").grid(row=0, column=0, padx=5)
+        ttk.Label(self.settings_frame, text="API URL:").grid(row=0, column=1, padx=5)
         self.api_url_var = tk.StringVar(value=self.api_url)
         self.api_url_entry = ttk.Entry(self.settings_frame, textvariable=self.api_url_var, width=40)
-        self.api_url_entry.grid(row=0, column=1, padx=5)
+        self.api_url_entry.grid(row=0, column=2, padx=5)
         
         # Model Selection
-        ttk.Label(self.settings_frame, text="Model:").grid(row=0, column=2, padx=5)
+        ttk.Label(self.settings_frame, text="Model:").grid(row=0, column=3, padx=5)
         self.model_var = tk.StringVar(value=self.model)
         self.model_select = ttk.Combobox(self.settings_frame, textvariable=self.model_var, width=20, state="readonly")
-        self.model_select.grid(row=0, column=3, padx=5)
+        self.model_select.grid(row=0, column=4, padx=5)
         
         # Server Status and Help
         self.status_frame = ttk.Frame(self.settings_frame)
@@ -77,6 +248,9 @@ class LexiGen:
         self.help_btn = ttk.Button(self.status_frame, text="Setup Help", command=self.open_help)
         self.help_btn.pack(side=tk.LEFT, padx=5)
         
+        # Create update button but don't pack it yet
+        self.update_btn = ttk.Button(self.status_frame, text="Check for Updates", command=self.check_for_updates)
+
         # Word Input Frame
         self.input_frame = ttk.LabelFrame(self.main_container, text="Input Words", padding="5")
         self.input_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
@@ -264,36 +438,8 @@ class LexiGen:
             return False
 
     def open_help(self):
-        webbrowser.open("https://ollama.com/")
-        
-        try:
-            with open("README.md", 'r') as f:
-                content = f.read()
-                # Find the Prerequisites section
-                start = content.find("## Prerequisites")
-                if start != -1:
-                    # Find the next section
-                    end = content.find("##", start + 1)
-                    if end != -1:
-                        prerequisites = content[start:end].strip()
-                    else:
-                        prerequisites = content[start:].strip()
-                    
-                    # Extract just the numbered list (remove the "## Prerequisites" header)
-                    prerequisites = prerequisites.replace("## Prerequisites", "").strip()
-                    
-                    messagebox.showinfo("Setup Instructions", prerequisites)
-                else:
-                    raise FileNotFoundError("Prerequisites section not found in README.md")
-        except Exception as e:
-            # Fallback message if README.md can't be read
-            messagebox.showinfo(
-                "Setup Instructions",
-                "1. Install Ollama from ollama.com\n"
-                "2. Run 'ollama serve' in terminal\n"
-                "3. Run 'ollama pull model' to download the model\n"
-                "4. Click 'Check Server' to verify connection"
-            )
+        """Open the GitHub README page."""
+        webbrowser.open("https://github.com/gitmichaelqiu/LexiGen/blob/main/README.md")
 
     def get_prompt_template(self):
         """Read prompt from file or return default prompt."""
@@ -390,66 +536,8 @@ class LexiGen:
         def create_mask(w):
             return w[0] + "_" * (len(w) - 1)
         
-        # Function to get word variations using NLTK
-        def get_word_variations(word):
-            word = word.lower()
-            variations = {word}  # Start with the original word
-            
-            # Get base form (lemma) for different parts of speech
-            for pos in [wordnet.NOUN, wordnet.VERB, wordnet.ADJ, wordnet.ADV]:
-                lemma = self.lemmatizer.lemmatize(word, pos=pos)
-                variations.add(lemma)
-            
-            # Add common derivational forms
-            for w in list(variations):  # Make a copy of the set to iterate over
-                # Nouns
-                variations.add(w + 's')  # Plural
-                variations.add(w + 'es')  # Plural form 2
-                # Verbs
-                variations.add(w + 'ed')  # Past tense
-                variations.add(w + 'd')   # Past tense alternate
-                variations.add(w + 'ing')  # Present participle
-                # Adjectives
-                variations.add(w + 'ic')   # Related adjective
-                variations.add(w + 'ical')  # Related adjective
-                variations.add(w + 'ous')   # Related adjective
-                variations.add(w + 'al')    # Related adjective
-                variations.add(w + 'ive')   # Related adjective
-                variations.add(w + 'able')  # Ability adjective
-                variations.add(w + 'ible')  # Ability adjective
-                variations.add(w + 'y')     # Related adjective
-                # Adverbs
-                variations.add(w + 'ly')    # Related adverb
-                # Nouns from adjectives
-                variations.add(w + 'ness')  # Quality noun
-                variations.add(w + 'ity')   # State noun
-                
-                # Handle words ending in 'e'
-                if w.endswith('e'):
-                    variations.add(w[:-1] + 'ing')  # remove 'e' before 'ing'
-                    variations.add(w + 'r')         # comparative
-                    variations.add(w + 'st')        # superlative
-                
-                # Handle words ending in 'y'
-                if w.endswith('y'):
-                    variations.add(w[:-1] + 'ies')  # plural
-                    variations.add(w[:-1] + 'ied')  # past tense
-                    variations.add(w[:-1] + 'ier')  # comparative
-                    variations.add(w[:-1] + 'iest') # superlative
-                    variations.add(w[:-1] + 'ily')  # adverb
-                    variations.add(w[:-1] + 'iness') # noun
-                
-                # Special cases for your example
-                if w in ['melody']:
-                    variations.add('melodic')
-                    variations.add('melodious')
-                    variations.add('melodically')
-                    variations.add('melodiously')
-            
-            return variations
-        
-        # Get word variations
-        word_forms = get_word_variations(word)
+        # Get word variations (all lowercase)
+        word_forms = {w.lower() for w in get_word_variations(word)}
         
         # Create the masked sentence
         sentence_lower = sentence.lower()
@@ -458,10 +546,14 @@ class LexiGen:
         # Sort word forms by length in descending order to handle longer forms first
         word_forms = sorted(word_forms, key=len, reverse=True)
         
+        # Debug print
+        print(f"Original sentence: {sentence}")
+        print(f"Looking for variations: {sorted(word_forms)}")
+        
         for form in word_forms:
             index = 0
             while True:
-                index = sentence_lower.find(form.lower(), index)
+                index = sentence_lower.find(form, index)
                 if index == -1:
                     break
                     
@@ -470,9 +562,11 @@ class LexiGen:
                 after = index + len(form) == len(sentence_lower) or not sentence_lower[index + len(form)].isalpha()
                 
                 if before and after:
+                    # Get the original case version from the sentence
                     original_word = sentence[index:index + len(form)]
                     masked_word = create_mask(original_word)
                     masked_words[original_word] = masked_word
+                    print(f"Found match: '{original_word}' -> '{masked_word}'")
                 
                 index += len(form)
         
@@ -480,6 +574,8 @@ class LexiGen:
         masked_sentence = sentence
         for original, masked in sorted(masked_words.items(), key=lambda x: len(x[0]), reverse=True):
             masked_sentence = masked_sentence.replace(original, masked)
+        
+        print(f"Final masked sentence: {masked_sentence}")
         
         # Text widget for the sentence
         text_widget = tk.Text(frame, wrap=tk.WORD, cursor="arrow")
@@ -820,18 +916,48 @@ class LexiGen:
             self.delete_btn.configure(state="disabled")  # Disable Delete All button
             self.append_btn.pack_forget()
 
+    def check_for_updates(self, show_message=True):
+        """Check for updates by querying GitHub releases."""
+        try:
+            response = requests.get("https://api.github.com/repos/gitmichaelqiu/LexiGen/releases/latest")
+            if response.status_code == 200:
+                latest_version = response.json()["tag_name"].lstrip('v')
+                if latest_version > VERSION:
+                    self.update_btn.configure(text="New version available", style="UpdateAvailable.TButton")
+                else:
+                    self.update_btn.configure(text="Up to date", style="UpToDate.TButton")
+                
+                # Show the update button now that we have a result
+                self.update_btn.pack(side=tk.LEFT, padx=5)
+                
+                if show_message:
+                    if latest_version > VERSION:
+                        if messagebox.askyesno(
+                            "Update Available", 
+                            f"A new version (v{latest_version}) is available!\n\nCurrent version: v{VERSION}\n\nWould you like to visit the download page?"
+                        ):
+                            webbrowser.open("https://github.com/gitmichaelqiu/LexiGen/releases/latest")
+                    else:
+                        messagebox.showinfo("No Updates", f"You are using the latest version (v{VERSION}).")
+            else:
+                # Show button with default style if check fails
+                self.update_btn.configure(text="Check for Updates", style="Update.TButton")
+                self.update_btn.pack(side=tk.LEFT, padx=5)
+                if show_message:
+                    messagebox.showerror("Error", "Failed to check for updates. Please try again later.")
+        except Exception as e:
+            # Show button with default style if check fails
+            self.update_btn.configure(text="Check for Updates", style="Update.TButton")
+            self.update_btn.pack(side=tk.LEFT, padx=5)
+            if show_message:
+                messagebox.showerror("Error", f"Failed to check for updates:\n{str(e)}")
+
 if __name__ == "__main__":
     try:
-        print("Starting LexiGen...")
-        # Initialize NLTK in a background thread
-        nltk_thread = threading.Thread(target=initialize_nltk, daemon=True)
-        nltk_thread.start()
-        
-        # Create and run the application
         root = tk.Tk()
         app = LexiGen(root)
         root.mainloop()
     except Exception as e:
-        print(f"Error starting application: {str(e)}")
+        messagebox.showerror("Error", f"Error starting application:\n{str(e)}")
         import traceback
         traceback.print_exc() 
