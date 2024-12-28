@@ -168,21 +168,118 @@ def get_word_variations(word):
     
     return variations
 
+class SplashScreen:
+    def __init__(self, parent):
+        self.parent = parent
+        
+        # Create splash window
+        self.splash = tk.Toplevel(parent)
+        self.splash.title("")
+        self.splash.overrideredirect(True)  # Remove window decorations
+        
+        # Calculate center position
+        window_width = 400
+        window_height = 250
+        screen_width = parent.winfo_screenwidth()
+        screen_height = parent.winfo_screenheight()
+        center_x = int((screen_width - window_width) / 2)
+        center_y = int((screen_height - window_height) / 2)
+        self.splash.geometry(f"{window_width}x{window_height}+{center_x}+{center_y}")
+        
+        # Configure splash window
+        self.splash.configure(bg='white')
+        self.splash.transient(parent)
+        self.splash.grab_set()
+        
+        # Create main frame
+        main_frame = ttk.Frame(self.splash, padding="20")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        try:
+            # Load and display app icon
+            icon = tk.PhotoImage(file="Lexi.png")
+            # Resize icon if needed
+            icon = icon.subsample(2, 2)  # Adjust subsample values as needed
+            icon_label = ttk.Label(main_frame, image=icon)
+            icon_label.image = icon  # Keep a reference
+        except:
+            # Fallback if icon not found
+            icon_label = ttk.Label(main_frame, text="LexiGen", font=("Helvetica", 24, "bold"))
+        icon_label.pack(pady=(0, 10))
+        
+        # App name and version
+        ttk.Label(main_frame, text=f"LexiGen v{VERSION}", font=("Helvetica", 14)).pack(pady=(0, 20))
+        
+        # Progress bar and status
+        self.progress = ttk.Progressbar(main_frame, mode='determinate', length=300)
+        self.progress.pack(pady=(0, 10))
+        
+        self.status_label = ttk.Label(main_frame, text="Initializing...", font=("Helvetica", 10))
+        self.status_label.pack()
+        
+        # Center the splash window
+        self.splash.update_idletasks()
+        
+        # Make parent window invisible
+        parent.withdraw()
+    
+    def update_progress(self, value, status_text):
+        """Update progress bar and status text."""
+        self.progress['value'] = value
+        self.status_label['text'] = status_text
+        self.splash.update_idletasks()
+    
+    def destroy(self):
+        """Destroy splash screen and show main window."""
+        self.parent.deiconify()  # Show main window
+        self.splash.destroy()
+
 class LexiGen:
     def __init__(self, root):
         self.root = root
+        self.root.withdraw()  # Hide main window immediately
+        
+        # Create splash screen first, before any other operations
+        self.splash = SplashScreen(root)
+        self.splash.update_progress(0, "Starting...")
+        
+        # Now configure the main window
         self.root.title(f"LexiGen v{VERSION} - Fill-in-the-Blank Generator")
         self.root.geometry("1000x800")
         
-        # Setup basic UI first
-        self.setup_ui()
+        # Initialize components in sequence
+        self.root.after(100, self.initialize_components)
+    
+    def initialize_components(self):
+        """Initialize all components in sequence."""
+        def setup_interface():
+            self.splash.update_progress(20, "Setting up interface...")
+            self.setup_ui()
+            check_nltk()
         
-        # Initialize NLTK in background
-        self.nltk_ready = False
-        self.root.after(1000, self.init_nltk)
+        def check_nltk():
+            self.splash.update_progress(40, "Checking NLTK data...")
+            self.nltk_ready = False
+            self.init_nltk()
+            check_server()
         
-        # Check for updates in background
-        self.root.after(2000, lambda: self.check_for_updates(show_message=False))
+        def check_server():
+            self.splash.update_progress(60, "Checking server status...")
+            if self.check_server_status_initial():
+                self.root.after(100, lambda: self.fetch_models())
+            check_updates()
+        
+        def check_updates():
+            self.splash.update_progress(80, "Checking for updates...")
+            self.check_for_updates(show_message=False)
+            finish_startup()
+        
+        def finish_startup():
+            self.splash.update_progress(100, "Ready!")
+            self.root.after(500, self.splash.destroy)  # Give time to see 100%
+        
+        # Start the initialization sequence
+        setup_interface()
 
     def init_nltk(self):
         """Initialize NLTK after the main UI is ready."""
@@ -878,24 +975,44 @@ class LexiGen:
         """Generate a new sentence for the given word and update the widget."""
         new_sentence = self.generate_sentence_for_word(word)
         if new_sentence:
-            # Create a new sentence widget
-            new_frame = self.create_sentence_widget(word, new_sentence)
-            
-            # Get the grid info of the old frame
-            grid_info = frame.grid_info()
-            
-            # Configure the new frame with the same grid parameters
-            new_frame.grid(row=grid_info['row'], column=grid_info['column'], sticky=grid_info['sticky'], pady=grid_info['pady'])
-            
-            # Replace the old frame in the sentence_widgets list
-            index = self.sentence_widgets.index(frame)
-            self.sentence_widgets[index] = new_frame
-            
-            # Destroy the old frame
-            frame.destroy()
-            
-            # Update the scroll region
-            self._on_frame_configure()
+            try:
+                # Get current position
+                current_index = self.sentence_widgets.index(frame)
+                
+                # Create new frame first
+                new_frame = self.create_sentence_widget(word, new_sentence)
+                
+                # Remove the new frame from the end of sentence_widgets (it was added by create_sentence_widget)
+                self.sentence_widgets.pop()
+                
+                # Remove and destroy old frame
+                self.sentence_widgets.pop(current_index)
+                frame.destroy()
+                
+                # Insert new frame at the correct position
+                self.sentence_widgets.insert(current_index, new_frame)
+                
+                # Update grid positions for all widgets
+                for i, widget in enumerate(self.sentence_widgets):
+                    widget.grid(row=i, column=0, sticky=(tk.W, tk.E), pady=2)
+                
+                # Update scroll region
+                self._on_frame_configure()
+                
+            except Exception as e:
+                print(f"Error during sentence regeneration: {str(e)}")
+                # Clean up any remnants of the old frame
+                if frame in self.sentence_widgets:
+                    self.sentence_widgets.remove(frame)
+                try:
+                    frame.destroy()
+                except:
+                    pass
+                    
+                # Create new widget at the end as fallback
+                new_frame = self.create_sentence_widget(word, new_sentence)
+                new_frame.grid(row=len(self.sentence_widgets)-1, column=0, sticky=(tk.W, tk.E), pady=2)
+                self._on_frame_configure()
 
     def delete_sentence(self, frame):
         """Delete a single sentence widget."""
