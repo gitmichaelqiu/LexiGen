@@ -1,17 +1,20 @@
 # LexiGen
 
-![LexiGen Logo](lexi.png)
-
 <div align="center">
+
+![LexiGen Logo](https://github.com/gitmichaelqiu/LexiGen/blob/main/Lexi.png?raw=true)
 
 An AI-powered desktop application for generating educational fill-in-the-blank sentences.
 
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL%203.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Powered by Ollama](https://img.shields.io/badge/Powered%20by-Ollama-orange)](https://ollama.com)
+[![Release](https://img.shields.io/github/v/release/gitmichaelqiu/LexiGen?color=green)](https://github.com/gitmichaelqiu/LexiGen/releases/)
 
 </div>
 
 ## 🎯 Overview
+
+"Lexi" comes from "lexicon".
 
 LexiGen transforms vocabulary practice and language learning by automatically generating contextual fill-in-the-blank sentences. Leveraging Ollama's AI models, it creates engaging educational materials with just a few clicks.
 
@@ -29,11 +32,8 @@ LexiGen transforms vocabulary practice and language learning by automatically ge
 ### Prerequisites
 
 1. Install [Ollama](https://ollama.com)
-2. Launch the Ollama server or run Ollama app:
-   ```bash
-   ollama serve
-   ```
-3. Install a compatible model (e.g. qwen2.5:3b):
+2. Launch the Ollama app
+3. Open the terminal (Windows: press `Windows + R`, then type `cmd`) and install a compatible model (e.g. qwen2.5:3b):
    ```bash
    ollama pull qwen2.5:3b
    ```
@@ -96,4 +96,6 @@ LexiGen is open source software licensed under the [GNU General Public License v
 
 <div align="center">
 Made for educators and learners
+
+If you like this project, please consider giving me a star ⭐️
 </div>
