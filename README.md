@@ -12,6 +12,12 @@ An AI-powered desktop application for generating educational fill-in-the-blank s
 
 </div>
 
+
+
+https://github.com/user-attachments/assets/b2147a30-ac54-4e58-80f0-9409f6d978c4
+
+
+
 ## 🎯 Overview
 
 "Lexi" comes from "lexicon".
