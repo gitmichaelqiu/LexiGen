@@ -1,6 +1,6 @@
 # LexiGen
 
-[中文版](README_zh.md)
+[中文版](/translations/README_zh.md)
 
 <div align="center">
 
