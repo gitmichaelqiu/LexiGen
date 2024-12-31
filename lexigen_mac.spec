@@ -7,9 +7,10 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        ('Lexi.png', '.'),
+        ('icons/Lexi.png', '.'),
         ('prompt.txt', '.'),
-        ('requirements.txt', '.')
+        ('translations/*.json', 'translations'),
+        ('icons/Lexi.icns', 'icons'),
     ],
     hiddenimports=[
         'nltk',
@@ -18,15 +19,23 @@ a = Analysis(
         'nltk.tokenize',
         'docx',
         'docx.shared',
-        'docx.enum.text'
+        'docx.enum.text',
     ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        'matplotlib', 'numpy', 'pandas', 'scipy', 'PIL',
-        'PyQt5', 'PyQt6', 'PySide2', 'PySide6',
-        'IPython', 'jupyter', 'notebook'
+        'matplotlib',
+        'numpy',
+        'pandas',
+        'scipy',
+        'PIL',
+        'PyQt5',
+        'PyQt6',
+        'PySide2',
+        'PySide6',
+        'IPython',
+        'jupyter',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -48,11 +57,10 @@ exe = EXE(
     upx=True,
     console=False,
     disable_windowed_traceback=False,
-    argv_emulation=True,
+    argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='Lexi.icns'
 )
 
 coll = COLLECT(
@@ -63,18 +71,21 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='LexiGen'
+    name='LexiGen',
 )
 
 app = BUNDLE(
     coll,
     name='LexiGen.app',
-    icon='Lexi.icns',
-    bundle_identifier='com.lexigen.app',
+    icon='icons/Lexi.icns',
+    bundle_identifier='com.michaelqiu.lexigen',
     info_plist={
-        'CFBundleShortVersionString': '1.1.0',
-        'CFBundleVersion': '1.1.0',
-        'NSHighResolutionCapable': 'True',
-        'LSMinimumSystemVersion': '10.13.0'
-    }
+        'CFBundleShortVersionString': '1.1.1',
+        'CFBundleVersion': '1.1.1',
+        'NSHighResolutionCapable': True,
+        'CFBundleDisplayName': 'LexiGen',
+        'CFBundleName': 'LexiGen',
+        'NSRequiresAquaSystemAppearance': False,
+        'LSMinimumSystemVersion': '10.13.0',
+    },
 )

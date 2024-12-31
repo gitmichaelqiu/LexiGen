@@ -92,4 +92,6 @@ LexiGen 是一款完全免费的首字母填空生成器，专为教育工作者
 如果这个项目对您有帮助，请考虑给 LexiGen 一个星标 ⭐️
 
 感谢您对 LexiGen 的支持！
+
+— [@gitmichaelqiu](https://github.com/gitmichaelqiu)
 </div> 

@@ -11,88 +11,150 @@ import nltk
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import wordnet
 import threading
+import sys
 
 # Version information
-VERSION = "1.1.0"
+VERSION = "1.2.0"
+
+# Language translations
+TRANSLATIONS = {
+    "English": {
+        "settings": "Settings",
+        "api_url": "API URL:",
+        "model": "Model:",
+        "server_status": "Server Status:",
+        "server_status_checking": "Server Status: Checking...",
+        "server_status_connected": "Server Status: Connected",
+        "server_status_error": "Server Status: Error",
+        "server_status_not_connected": "Server Status: Not Connected",
+        "check_server": "Check Server",
+        "setup_help": "Setup Help",
+        "check_updates": "Check for Updates",
+        "new_version": "New version available",
+        "up_to_date": "Up to date",
+        "input_words": "Input Words",
+        "enter_words": "Enter words separated by commas",
+        "generate": "Generate",
+        "append": "Append",
+        "generating": "Generating sentences...",
+        "generated_sentences": "Generated Sentences",
+        "export_docx": "Export Docx",
+        "show_all": "Show All",
+        "hide_all": "Hide All",
+        "delete_all": "Delete All",
+        "show": "Show",
+        "hide": "Hide",
+        "copy": "Copy",
+        "language": "Language:",
+        "server_status_title": "Server Status",
+        "server_connected_msg": "Successfully connected to Ollama server!\n\nServer version: {version}",
+        "server_error_msg": "Failed to connect to Ollama server.\n\nPlease check if the server is running and the URL is correct.",
+        "server_connection_error_msg": "Cannot connect to Ollama server. Please ensure:\n\n1. Ollama is installed\n2. Server is running ('ollama serve')\n3. API URL is correct\n\nError: {error}",
+        "server_error_title": "Server Error",
+        "server_connection_guide": "Cannot connect to Ollama server. Please ensure:\n1. Ollama is installed\n2. Server is running ('ollama serve')\n3. Model is installed ('ollama pull llama2')\nClick 'Setup Help' for more information.",
+        "warning_title": "Warning",
+        "no_sentences_warning": "No sentences to export!",
+        "document_title_prompt": "Enter the title for your document:",
+        "save_document_title": "Save Document As",
+        "export_success_title": "Success",
+        "export_success_msg": "Document exported successfully!",
+        "update_available_title": "Update Available",
+        "update_available_msg": "A new version (v{version}) is available!\n\nCurrent version: v{current_version}\n\nWould you like to visit the download page?",
+        "no_updates_title": "No Updates",
+        "no_updates_msg": "You are using the latest version (v{version})",
+        "error_title": "Error",
+        "update_check_error": "Failed to check for updates. Please try again later.",
+        "update_error_msg": "Failed to check for updates:\n{error}",
+        "prompt_error_msg": "Failed to read prompt file: {error}\nUsing default prompt.",
+        "generation_error_msg": "Failed to generate sentence: {error}\nPlease check your server settings and connection.",
+        "unexpected_error_msg": "An unexpected error occurred: {error}",
+        "startup_error_msg": "Error starting application:\n{error}",
+        "using_custom_prompt": "Using custom prompt",
+        "using_default_prompt": "Using default prompt",
+        "toggle_prompt": "Toggle Prompt"
+    }
+}
+
+def load_translations():
+    """Load translations from external files."""
+    try:
+        # Get the application's base directory
+        if getattr(sys, 'frozen', False):
+            # Running in a bundle (packaged)
+            if sys.platform == 'darwin':
+                # For macOS, get the parent directory of the .app bundle
+                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable))))
+            else:
+                # For Windows, get the directory containing the .exe
+                base_dir = os.path.dirname(sys.executable)
+            print(f"Running in packaged mode, base directory: {base_dir}")
+        else:
+            # Running in a normal Python environment
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            print(f"Running in development mode, base directory: {base_dir}")
+        
+        translations_dir = os.path.join(base_dir, "translations")
+        print(f"Looking for translations in: {translations_dir}")
+        
+        if not os.path.exists(translations_dir):
+            try:
+                os.makedirs(translations_dir)
+                print(f"Created translations directory: {translations_dir}")
+            except Exception as e:
+                print(f"Failed to create translations directory: {str(e)}")
+        
+        if os.path.exists(translations_dir):
+            print(f"Translations directory exists. Checking permissions...")
+            # Check directory permissions
+            try:
+                test_perms = os.access(translations_dir, os.R_OK)
+                print(f"Directory readable: {test_perms}")
+            except Exception as e:
+                print(f"Failed to check directory permissions: {str(e)}")
+            
+            # List and load translation files
+            try:
+                files = os.listdir(translations_dir)
+                print(f"Found files in translations directory: {files}")
+                
+                for file in files:
+                    if file.endswith('.json'):
+                        file_path = os.path.join(translations_dir, file)
+                        try:
+                            print(f"Attempting to read: {file_path}")
+                            with open(file_path, 'r', encoding='utf-8') as f:
+                                lang_translations = json.load(f)
+                                TRANSLATIONS.update(lang_translations)
+                                print(f"Successfully loaded translations from {file}")
+                        except Exception as e:
+                            print(f"Failed to load translation file {file}: {str(e)}")
+            except Exception as e:
+                print(f"Failed to list translation files: {str(e)}")
+        else:
+            print(f"Translations directory does not exist and could not be created")
+        
+        print(f"Available languages after loading: {list(TRANSLATIONS.keys())}")
+        return list(TRANSLATIONS.keys())
+    except Exception as e:
+        print(f"Error in load_translations: {str(e)}")
+        return list(TRANSLATIONS.keys())
+
+# Load translations at startup
+load_translations()
 
 def initialize_nltk(root):
     """Initialize NLTK data."""
-    def is_nltk_downloaded():
-        try:
-            # Try to actually use WordNet to verify it's properly installed
-            wordnet.synsets('test')
-            return True
-        except (LookupError, ImportError, AttributeError):
-            return False
-
-    def create_download_dialog():
-        dialog = tk.Toplevel(root)
-        dialog.title("Downloading Required Data")
-        dialog.transient(root)
-        dialog.grab_set()
-        
-        # Make dialog modal
-        dialog.protocol("WM_DELETE_WINDOW", lambda: None)  # Disable close button
-        
-        # Center the dialog
-        dialog.geometry("300x150")
-        x = root.winfo_x() + (root.winfo_width() - 300) // 2
-        y = root.winfo_y() + (root.winfo_height() - 150) // 2
-        dialog.geometry(f"+{x}+{y}")
-        
-        # Create and pack widgets
-        frame = ttk.Frame(dialog, padding="20")
-        frame.pack(fill=tk.BOTH, expand=True)
-        
-        message = ttk.Label(frame, text="Downloading NLTK data...\nThis may take a few moments.")
-        message.pack(pady=(0, 10))
-        
-        progress = ttk.Progressbar(frame, mode='indeterminate')
-        progress.pack(fill=tk.X, pady=(0, 10))
-        progress.start()
-        
-        ok_button = ttk.Button(frame, text="OK", state="disabled")
-        ok_button.pack(pady=(10, 0))
-        
-        return dialog, message, progress, ok_button
-
-    def download_nltk_data(dialog, message, progress, ok_button):
-        try:
-            nltk.download('wordnet', quiet=True)
-            nltk.download('omw-1.4', quiet=True)
-            
-            if is_nltk_downloaded():
-                progress.stop()
-                message.configure(text="Download completed successfully!")
-                ok_button.configure(state="normal", command=dialog.destroy)
-                return True
-            else:
-                raise Exception("Failed to verify NLTK data installation")
-        except Exception as e:
-            progress.stop()
-            message.configure(text=f"Error: {str(e)}\n\nWord variation detection will be limited.")
-            ok_button.configure(state="normal", command=dialog.destroy)
-            return False
-
-    # Check if NLTK is already downloaded and working
-    if is_nltk_downloaded():
+    try:
+        # Try to use WordNet to verify it's properly installed
+        wordnet.synsets('test')
         return True
-        
-    # Create and show download dialog
-    dialog, message, progress, ok_button = create_download_dialog()
-    
-    # Start download in a separate thread
-    download_thread = threading.Thread(
-        target=lambda: download_nltk_data(dialog, message, progress, ok_button)
-    )
-    download_thread.daemon = True
-    download_thread.start()
-    
-    # Wait for dialog to close
-    root.wait_window(dialog)
-    
-    # Check again if download was successful
-    return is_nltk_downloaded()
+    except (LookupError, ImportError, AttributeError) as e:
+        print(f"Error initializing NLTK: {str(e)}")
+        messagebox.showerror(
+            "Error",
+            "Failed to initialize word variation detection.\nThis may affect some functionality."
+        )
+        return False
 
 def get_word_variations(word):
     """Get word variations using NLTK WordNet."""
@@ -168,118 +230,34 @@ def get_word_variations(word):
     
     return variations
 
-class SplashScreen:
-    def __init__(self, parent):
-        self.parent = parent
-        
-        # Create splash window
-        self.splash = tk.Toplevel(parent)
-        self.splash.title("")
-        self.splash.overrideredirect(True)  # Remove window decorations
-        
-        # Calculate center position
-        window_width = 400
-        window_height = 250
-        screen_width = parent.winfo_screenwidth()
-        screen_height = parent.winfo_screenheight()
-        center_x = int((screen_width - window_width) / 2)
-        center_y = int((screen_height - window_height) / 2)
-        self.splash.geometry(f"{window_width}x{window_height}+{center_x}+{center_y}")
-        
-        # Configure splash window
-        self.splash.configure(bg='white')
-        self.splash.transient(parent)
-        self.splash.grab_set()
-        
-        # Create main frame
-        main_frame = ttk.Frame(self.splash, padding="20")
-        main_frame.pack(fill=tk.BOTH, expand=True)
-        
-        try:
-            # Load and display app icon
-            icon = tk.PhotoImage(file="Lexi.png")
-            # Resize icon if needed
-            icon = icon.subsample(2, 2)  # Adjust subsample values as needed
-            icon_label = ttk.Label(main_frame, image=icon)
-            icon_label.image = icon  # Keep a reference
-        except:
-            # Fallback if icon not found
-            icon_label = ttk.Label(main_frame, text="LexiGen", font=("Helvetica", 24, "bold"))
-        icon_label.pack(pady=(0, 10))
-        
-        # App name and version
-        ttk.Label(main_frame, text=f"LexiGen v{VERSION}", font=("Helvetica", 14)).pack(pady=(0, 20))
-        
-        # Progress bar and status
-        self.progress = ttk.Progressbar(main_frame, mode='determinate', length=300)
-        self.progress.pack(pady=(0, 10))
-        
-        self.status_label = ttk.Label(main_frame, text="Initializing...", font=("Helvetica", 10))
-        self.status_label.pack()
-        
-        # Center the splash window
-        self.splash.update_idletasks()
-        
-        # Make parent window invisible
-        parent.withdraw()
-    
-    def update_progress(self, value, status_text):
-        """Update progress bar and status text."""
-        self.progress['value'] = value
-        self.status_label['text'] = status_text
-        self.splash.update_idletasks()
-    
-    def destroy(self):
-        """Destroy splash screen and show main window."""
-        self.parent.deiconify()  # Show main window
-        self.splash.destroy()
-
 class LexiGen:
     def __init__(self, root):
         self.root = root
-        self.root.withdraw()  # Hide main window immediately
         
-        # Create splash screen first, before any other operations
-        self.splash = SplashScreen(root)
-        self.splash.update_progress(0, "Starting...")
-        
-        # Now configure the main window
+        # Configure main window
         self.root.title(f"LexiGen v{VERSION} - Fill-in-the-Blank Generator")
-        self.root.geometry("1000x800")
+        self.root.geometry("1100x800")
         
-        # Initialize components in sequence
-        self.root.after(100, self.initialize_components)
-    
-    def initialize_components(self):
-        """Initialize all components in sequence."""
-        def setup_interface():
-            self.splash.update_progress(20, "Setting up interface...")
-            self.setup_ui()
-            check_nltk()
+        # Initialize UI and components
+        self.setup_ui()
         
-        def check_nltk():
-            self.splash.update_progress(40, "Checking NLTK data...")
-            self.nltk_ready = False
-            self.init_nltk()
-            check_server()
+        # Initialize NLTK
+        self.nltk_ready = False
+        self.init_nltk()
         
-        def check_server():
-            self.splash.update_progress(60, "Checking server status...")
-            if self.check_server_status_initial():
-                self.root.after(100, lambda: self.fetch_models())
-            check_updates()
+        # Check server and fetch models
+        self.root.after(100, self.initial_setup)
         
-        def check_updates():
-            self.splash.update_progress(80, "Checking for updates...")
-            self.check_for_updates(show_message=False)
-            finish_startup()
+        # Check for updates
+        self.root.after(200, lambda: self.check_for_updates(show_message=False))
         
-        def finish_startup():
-            self.splash.update_progress(100, "Ready!")
-            self.root.after(500, self.splash.destroy)  # Give time to see 100%
+        # Load translations
+        available_languages = load_translations()
+        if hasattr(self, 'language_select'):
+            self.language_select['values'] = available_languages
         
-        # Start the initialization sequence
-        setup_interface()
+        # Test prompt on startup
+        self.root.after(300, self.test_prompt)
 
     def init_nltk(self):
         """Initialize NLTK after the main UI is ready."""
@@ -308,46 +286,76 @@ class LexiGen:
         self.default_prompt = "Create a simple sentence using the word '{word}'. The sentence should be clear and educational."
         self.prompt_file = "prompt.txt"
         
+        # Language selection
+        self.current_language = "English"
+        
         # Create main container
         self.main_container = ttk.Frame(self.root, padding="10")
         self.main_container.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
         # Settings Frame
-        self.settings_frame = ttk.LabelFrame(self.main_container, text="Settings", padding="5")
+        self.settings_frame = ttk.LabelFrame(self.main_container, text=self._("settings"), padding="5")
         self.settings_frame.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
         
         # Version Label (left-aligned)
         version_label = ttk.Label(self.settings_frame, text=f"v{VERSION}", foreground="gray")
         version_label.grid(row=0, column=0, padx=5, sticky=tk.W)
         
+        # Language Selection
+        ttk.Label(self.settings_frame, text=self._("language")).grid(row=0, column=1, padx=5)
+        self.language_var = tk.StringVar(value=self.current_language)
+        self.language_select = ttk.Combobox(self.settings_frame, textvariable=self.language_var, 
+                                          values=list(TRANSLATIONS.keys()), state="readonly", width=10)
+        self.language_select.grid(row=0, column=2, padx=5)
+        self.language_select.bind('<<ComboboxSelected>>', self._on_language_change)
+        
         # API URL Entry
-        ttk.Label(self.settings_frame, text="API URL:").grid(row=0, column=1, padx=5)
+        ttk.Label(self.settings_frame, text=self._("api_url")).grid(row=0, column=3, padx=5)
         self.api_url_var = tk.StringVar(value=self.api_url)
         self.api_url_entry = ttk.Entry(self.settings_frame, textvariable=self.api_url_var, width=40)
-        self.api_url_entry.grid(row=0, column=2, padx=5)
+        self.api_url_entry.grid(row=0, column=4, padx=5)
         
         # Model Selection
-        ttk.Label(self.settings_frame, text="Model:").grid(row=0, column=3, padx=5)
+        ttk.Label(self.settings_frame, text=self._("model")).grid(row=0, column=5, padx=5)
         self.model_var = tk.StringVar(value=self.model)
         self.model_select = ttk.Combobox(self.settings_frame, textvariable=self.model_var, width=20, state="readonly")
-        self.model_select.grid(row=0, column=4, padx=5)
+        self.model_select.grid(row=0, column=6, padx=5)
         
         # Server Status and Help
         self.status_frame = ttk.Frame(self.settings_frame)
         self.status_frame.grid(row=1, column=0, columnspan=5, sticky=(tk.W, tk.E), pady=5)
         
-        self.status_label = ttk.Label(self.status_frame, text="Server Status: Checking...", foreground="gray")
+        # First row: Status labels
+        self.status_labels_frame = ttk.Frame(self.status_frame)
+        self.status_labels_frame.pack(fill=tk.X, pady=(0, 5))
+        
+        self.status_label = ttk.Label(self.status_labels_frame, text="Server Status: Checking...", foreground="gray")
         self.status_label.pack(side=tk.LEFT, padx=5)
         
-        self.check_server_btn = ttk.Button(self.status_frame, text="Check Server", command=self.check_server_status)
+        # Add separator
+        ttk.Separator(self.status_labels_frame, orient='vertical').pack(side=tk.LEFT, padx=5, fill='y')
+        
+        # Prompt status label
+        self.prompt_status_label = ttk.Label(self.status_labels_frame, text=self._("using_default_prompt"), foreground="gray")
+        self.prompt_status_label.pack(side=tk.LEFT, padx=5)
+        
+        # Second row: Buttons
+        self.buttons_row = ttk.Frame(self.status_frame)
+        self.buttons_row.pack(fill=tk.X)
+        
+        self.check_server_btn = ttk.Button(self.buttons_row, text="Check Server", command=self.check_server_status)
         self.check_server_btn.pack(side=tk.LEFT, padx=5)
         
-        self.help_btn = ttk.Button(self.status_frame, text="Setup Help", command=self.open_help)
+        self.help_btn = ttk.Button(self.buttons_row, text="Setup Help", command=self.open_help)
         self.help_btn.pack(side=tk.LEFT, padx=5)
         
         # Create update button but don't pack it yet
-        self.update_btn = ttk.Button(self.status_frame, text="Check for Updates", command=self.check_for_updates)
-
+        self.update_btn = ttk.Button(self.buttons_row, text="Check for Updates", command=self.check_for_updates)
+        
+        # Remove the unconditional creation of toggle_prompt_btn
+        # We'll create it only if a valid prompt file exists
+        self.toggle_prompt_btn = None
+        
         # Word Input Frame
         self.input_frame = ttk.LabelFrame(self.main_container, text="Input Words", padding="5")
         self.input_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
@@ -355,7 +363,8 @@ class LexiGen:
         # Word Input
         self.word_input = scrolledtext.ScrolledText(self.input_frame, height=3, width=70)
         self.word_input.grid(row=0, column=0, columnspan=2, padx=5, pady=5)
-        ttk.Label(self.input_frame, text="Enter words separated by commas").grid(row=1, column=0, sticky=tk.W, padx=5)
+        self.words_label = ttk.Label(self.input_frame, text=self._("enter_words"))
+        self.words_label.grid(row=1, column=0, sticky=tk.W, padx=5)
         
         # Buttons Frame for Generate and Append
         buttons_frame = ttk.Frame(self.input_frame)
@@ -454,18 +463,18 @@ class LexiGen:
         try:
             response = requests.get(self.api_url_var.get().replace("/generate", "/version"))
             if response.status_code == 200:
-                self.status_label.config(text="Server Status: Connected", foreground="green")
+                self.status_label.config(text=self._("server_status_connected"), foreground="green")
                 self.server_connected = True
                 self.generate_btn.configure(state="normal")  # Enable Generate button
                 return True
             else:
-                self.status_label.config(text="Server Status: Error", foreground="red")
+                self.status_label.config(text=self._("server_status_error"), foreground="red")
                 messagebox.showerror("Server Status", "Failed to connect to Ollama server.\n\nPlease check if the server is running and the URL is correct.")
                 self.server_connected = False
                 self.generate_btn.configure(state="disabled")  # Disable Generate button
                 return False
         except Exception as e:
-            self.status_label.config(text="Server Status: Not Connected", foreground="red")
+            self.status_label.config(text=self._("server_status_not_connected"), foreground="red")
             messagebox.showerror(
                 "Server Status", 
                 "Cannot connect to Ollama server. Please ensure:\n\n"
@@ -506,32 +515,34 @@ class LexiGen:
 
     def check_server_status(self):
         try:
-            # Try to connect to the Ollama server
             response = requests.get(self.api_url_var.get().replace("/generate", "/version"))
             if response.status_code == 200:
-                self.status_label.config(text="Server Status: Connected", foreground="green")
-                messagebox.showinfo("Server Status", "Successfully connected to Ollama server!\n\nServer version: " + response.json().get('version', 'Unknown'))
+                self.status_label.config(text=self._("server_status_connected"), foreground="green")
+                version = response.json().get('version', 'Unknown')
+                messagebox.showinfo(
+                    self._("server_status_title"),
+                    self._("server_connected_msg").format(version=version)
+                )
                 self.server_connected = True
-                self.generate_btn.configure(state="normal")  # Enable Generate button
+                self.generate_btn.configure(state="normal")
                 return True
             else:
-                self.status_label.config(text="Server Status: Error", foreground="red")
-                messagebox.showerror("Server Status", "Failed to connect to Ollama server.\n\nPlease check if the server is running and the URL is correct.")
+                self.status_label.config(text=self._("server_status_error"), foreground="red")
+                messagebox.showerror(
+                    self._("server_status_title"),
+                    self._("server_error_msg")
+                )
                 self.server_connected = False
-                self.generate_btn.configure(state="disabled")  # Disable Generate button
+                self.generate_btn.configure(state="disabled")
                 return False
         except Exception as e:
-            self.status_label.config(text="Server Status: Not Connected", foreground="red")
+            self.status_label.config(text=self._("server_status_not_connected"), foreground="red")
             messagebox.showerror(
-                "Server Status", 
-                "Cannot connect to Ollama server. Please ensure:\n\n"
-                "1. Ollama is installed\n"
-                "2. Server is running ('ollama serve')\n"
-                "3. API URL is correct\n\n"
-                f"Error: {str(e)}"
+                self._("server_status_title"),
+                self._("server_connection_error_msg").format(error=str(e))
             )
             self.server_connected = False
-            self.generate_btn.configure(state="disabled")  # Disable Generate button
+            self.generate_btn.configure(state="disabled")
             return False
 
     def open_help(self):
@@ -540,34 +551,95 @@ class LexiGen:
 
     def get_prompt_template(self):
         """Read prompt from file or return default prompt."""
-        try:
-            if os.path.exists(self.prompt_file):
-                with open(self.prompt_file, 'r') as f:
-                    prompt = f.read().strip()
-                    if prompt:  # Check if file is not empty
-                        return prompt
-        except Exception as e:
-            messagebox.showwarning("Warning", f"Failed to read prompt file: {str(e)}\nUsing default prompt.")
+        # If we have a cached prompt, return it directly
+        if hasattr(self, '_current_prompt') and self._current_prompt is not None:
+            return self._current_prompt
         
-        return self.default_prompt
+        try:
+            # Get the application's base directory
+            if getattr(sys, 'frozen', False):
+                # Running in a bundle (packaged)
+                if sys.platform == 'darwin':
+                    # For macOS, get the parent directory of the .app bundle
+                    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable))))
+                else:
+                    # For Windows, get the directory containing the .exe
+                    base_dir = os.path.dirname(sys.executable)
+                print(f"Running in packaged mode, base directory: {base_dir}")
+            else:
+                # Running in a normal Python environment
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+                print(f"Running in development mode, base directory: {base_dir}")
+            
+            prompt_file_path = os.path.join(base_dir, self.prompt_file)
+            print(f"Looking for prompt file at: {prompt_file_path}")
+            
+            if os.path.exists(prompt_file_path):
+                try:
+                    with open(prompt_file_path, 'r', encoding='utf-8') as f:
+                        prompt = f.read().strip()
+                        print(f"Read prompt content: {prompt}")
+                        
+                        # If file exists and is not empty, show Toggle button
+                        if prompt:
+                            if not self.toggle_prompt_btn:
+                                self.toggle_prompt_btn = ttk.Button(
+                                    self.buttons_row,
+                                    text=self._("toggle_prompt"),
+                                    command=self.toggle_prompt
+                                )
+                                self.toggle_prompt_btn.pack(side=tk.LEFT, padx=5)
+                    
+                    # Check if prompt contains {word} placeholder
+                    if '{word}' in prompt:
+                        print(f"Successfully loaded prompt from: {prompt_file_path}")
+                        self.prompt_status_label.configure(
+                            text=self._("using_custom_prompt"),
+                            foreground="green"
+                        )
+                        self._current_prompt = prompt
+                        return prompt
+                    else:
+                        print(f"Invalid prompt: missing {{word}} placeholder")
+                except Exception as e:
+                    print(f"Failed to read prompt file: {str(e)}")
+            else:
+                print(f"Prompt file not found at: {prompt_file_path}")
+            
+            print("Using default prompt")
+            self.prompt_status_label.configure(
+                text=self._("using_default_prompt"),
+                foreground="gray"
+            )
+            self._current_prompt = self.default_prompt
+            return self.default_prompt
+            
+        except Exception as e:
+            print(f"Error in get_prompt_template: {str(e)}")
+            self.prompt_status_label.configure(
+                text=self._("using_default_prompt"),
+                foreground="gray"
+            )
+            self._current_prompt = self.default_prompt
+            return self.default_prompt
 
     def check_server_status_silent(self):
         """Check server status without showing message boxes."""
         try:
             response = requests.get(self.api_url_var.get().replace("/generate", "/version"))
             if response.status_code == 200:
-                self.status_label.config(text="Server Status: Connected", foreground="green")
+                self.status_label.config(text=self._("server_status_connected"), foreground="green")
                 self.server_connected = True
                 return True
             else:
-                self.status_label.config(text="Server Status: Error", foreground="red")
+                self.status_label.config(text=self._("server_status_error"), foreground="red")
                 self.server_connected = False
-                self.generate_btn.configure(state="disabled")  # Disable Generate button
+                self.generate_btn.configure(state="disabled")
                 return False
         except Exception as e:
-            self.status_label.config(text="Server Status: Not Connected", foreground="red")
+            self.status_label.config(text=self._("server_status_not_connected"), foreground="red")
             self.server_connected = False
-            self.generate_btn.configure(state="disabled")  # Disable Generate button
+            self.generate_btn.configure(state="disabled")
             return False
 
     def generate_sentence_for_word(self, word):
@@ -643,10 +715,6 @@ class LexiGen:
         # Sort word forms by length in descending order to handle longer forms first
         word_forms = sorted(word_forms, key=len, reverse=True)
         
-        # Debug print
-        print(f"Original sentence: {sentence}")
-        print(f"Looking for variations: {sorted(word_forms)}")
-        
         for form in word_forms:
             index = 0
             while True:
@@ -663,7 +731,6 @@ class LexiGen:
                     original_word = sentence[index:index + len(form)]
                     masked_word = create_mask(original_word)
                     masked_words[original_word] = masked_word
-                    print(f"Found match: '{original_word}' -> '{masked_word}'")
                 
                 index += len(form)
         
@@ -672,10 +739,8 @@ class LexiGen:
         for original, masked in sorted(masked_words.items(), key=lambda x: len(x[0]), reverse=True):
             masked_sentence = masked_sentence.replace(original, masked)
         
-        print(f"Final masked sentence: {masked_sentence}")
-        
         # Text widget for the sentence
-        text_widget = tk.Text(frame, wrap=tk.WORD, cursor="arrow")
+        text_widget = tk.Text(frame, wrap=tk.WORD, cursor="arrow", height=1, width=50)  # Set a reasonable default width
         text_widget.insert("1.0", masked_sentence)
         text_widget.configure(state="disabled", selectbackground=text_widget.cget("background"), 
                             selectforeground=text_widget.cget("foreground"), inactiveselectbackground=text_widget.cget("background"))
@@ -709,7 +774,7 @@ class LexiGen:
         # Show/Hide Word Button
         show_btn = ttk.Button(
             frame,
-            text="Show",
+            text=self._("show"),
             command=lambda t=text_widget, b=None: self.toggle_word(word, t, b)
         )
         show_btn.grid(row=0, column=1, padx=(0, 5))
@@ -717,7 +782,7 @@ class LexiGen:
         # Copy Button
         copy_btn = ttk.Button(
             frame,
-            text="Copy",
+            text=self._("copy"),
             command=lambda t=text_widget: self.copy_sentence(t)
         )
         copy_btn.grid(row=0, column=2, padx=(0, 5))
@@ -729,7 +794,7 @@ class LexiGen:
             width=2,
             command=lambda w=word, t=text_widget, f=frame: self.regenerate_sentence(w, t, f)
         )
-        regen_btn.grid(row=0, column=3, padx=(0, 5))  # Added padding to separate from Delete button
+        regen_btn.grid(row=0, column=3, padx=(0, 5))
         
         # Delete Button
         delete_btn = ttk.Button(
@@ -744,7 +809,7 @@ class LexiGen:
         text_widget.original_sentence = sentence
         text_widget.masked_sentence = masked_sentence
         text_widget.word_visible = False
-        text_widget.show_button = show_btn  # Store button reference
+        text_widget.show_button = show_btn
         
         # Store text widget reference in the frame for easy access
         frame.text_widget = text_widget
@@ -766,13 +831,13 @@ class LexiGen:
             # Show the word
             text_widget.delete("1.0", tk.END)
             text_widget.insert("1.0", text_widget.original_sentence)
-            text_widget.show_button.configure(text="Hide")
+            text_widget.show_button.configure(text=self._("hide"))
             text_widget.word_visible = True
         else:
             # Hide the word
             text_widget.delete("1.0", tk.END)
             text_widget.insert("1.0", text_widget.masked_sentence)
-            text_widget.show_button.configure(text="Show")
+            text_widget.show_button.configure(text=self._("show"))
             text_widget.word_visible = False
         
         text_widget.configure(state="disabled")
@@ -780,11 +845,15 @@ class LexiGen:
     def export_docx(self):
         """Export sentences to a Word document."""
         if not self.sentence_widgets:
-            messagebox.showwarning("Warning", "No sentences to export!")
+            messagebox.showwarning(self._("warning_title"), self._("no_sentences_warning"))
             return
         
         # Ask user for document title
-        title = simpledialog.askstring("Document Title", "Enter the title for your document:", initialvalue="Fill in the Blank")
+        title = simpledialog.askstring(
+            self._("document_title_prompt"),
+            self._("document_title_prompt"),
+            initialvalue="Fill in the Blank"
+        )
         if not title:  # User cancelled or entered empty string
             return
         
@@ -792,7 +861,7 @@ class LexiGen:
         file_path = filedialog.asksaveasfilename(
             defaultextension=".docx",
             filetypes=[("Word Document", "*.docx")],
-            title="Save Document As",
+            title=self._("save_document_title"),
             initialfile=f"{title}.docx"  # Use title as default filename
         )
         
@@ -843,10 +912,10 @@ class LexiGen:
             
             # Save document
             doc.save(file_path)
-            messagebox.showinfo("Success", "Document exported successfully!")
+            messagebox.showinfo(self._("export_success_title"), self._("export_success_msg"))
             
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to export document: {str(e)}")
+            messagebox.showerror(self._("error_title"), str(e))
 
     def generate_sentences(self, append=False):
         # Get words from input and convert to lowercase
@@ -887,12 +956,12 @@ class LexiGen:
             
             # Update progress
             self.progress_bar['value'] = i + 1
-            self.progress_label.configure(text=f"Generating sentences... ({i + 1}/{len(words)})")
+            self.progress_label.configure(text=self._("generating") + f" ({i + 1}/{len(words)})")
             self.root.update()
         
         # Enable Show All and Export buttons if sentences were generated
         if has_sentences or len(self.sentence_widgets) > 0:
-            self.show_all_btn.configure(state="normal")
+            self.show_all_btn.configure(text=self._("show_all"), state="normal")
             self.export_btn.configure(state="normal")
             self.delete_btn.configure(state="normal")  # Enable Delete All button
             self.append_btn.pack(side=tk.LEFT, padx=(0, 5))  # Show Append button
@@ -928,7 +997,7 @@ class LexiGen:
                           for widget in self.sentence_widgets)
         
         # Update button text
-        self.show_all_btn.configure(text="Hide All" if show_all else "Show All")
+        self.show_all_btn.configure(text=self._("hide_all") if show_all else self._("show_all"))
         
         # Create a list of valid widgets to process
         valid_widgets = []
@@ -959,12 +1028,12 @@ class LexiGen:
                     # Show the word
                     text_widget.insert("1.0", text_widget.original_sentence)
                     text_widget.word_visible = True
-                    text_widget.show_button.configure(text="Hide")
+                    text_widget.show_button.configure(text=self._("hide"))
                 else:
                     # Hide the word
                     text_widget.insert("1.0", text_widget.masked_sentence)
                     text_widget.word_visible = False
-                    text_widget.show_button.configure(text="Show")
+                    text_widget.show_button.configure(text=self._("show"))
                 
                 text_widget.configure(state="disabled")
             except tk.TclError:
@@ -1068,6 +1137,148 @@ class LexiGen:
             self.update_btn.pack(side=tk.LEFT, padx=5)
             if show_message:
                 messagebox.showerror("Error", f"Failed to check for updates:\n{str(e)}")
+
+    def _(self, key):
+        """Get translation for the given key."""
+        return TRANSLATIONS[self.current_language].get(key, key)
+
+    def _on_language_change(self, event=None):
+        """Handle language change event."""
+        self.current_language = self.language_var.get()
+        self._update_ui_texts()
+
+    def _update_ui_texts(self):
+        """Update all UI texts after language change."""
+        # Update settings frame
+        self.settings_frame.configure(text=self._("settings"))
+        
+        # Update server status with current state
+        if hasattr(self, 'server_connected'):
+            if self.server_connected:
+                status_text = self._("server_status_connected")
+                color = "green"
+            else:
+                status_text = self._("server_status_not_connected")
+                color = "red"
+            self.status_label.configure(text=status_text, foreground=color)
+        else:
+            self.status_label.configure(text=self._("server_status_checking"), foreground="gray")
+        
+        # Update all labels in settings frame
+        for child in self.settings_frame.winfo_children():
+            if isinstance(child, ttk.Label):
+                text = child.cget("text")
+                if text.startswith("v"):  # Version label
+                    continue
+                elif text.endswith(":") or text.endswith("："):  # Labels ending with colon
+                    if "API" in text or "api" in text:
+                        child.configure(text=self._("api_url"))
+                    elif "Model" in text or "模型" in text:
+                        child.configure(text=self._("model"))
+                    elif "Language" in text or "语言" in text:
+                        child.configure(text=self._("language"))
+        
+        # Update buttons
+        self.check_server_btn.configure(text=self._("check_server"))
+        self.help_btn.configure(text=self._("setup_help"))
+        
+        # Update toggle prompt button if it exists
+        if self.toggle_prompt_btn:
+            self.toggle_prompt_btn.configure(text=self._("toggle_prompt"))
+        
+        # Update update button based on its current state
+        current_text = self.update_btn.cget("text")
+        if current_text in ["New version available", "有新版本"]:
+            self.update_btn.configure(text=self._("new_version"))
+        elif current_text in ["Up to date", "已是最新"]:
+            self.update_btn.configure(text=self._("up_to_date"))
+        else:
+            self.update_btn.configure(text=self._("check_updates"))
+        
+        # Update input frame
+        self.input_frame.configure(text=self._("input_words"))
+        self.generate_btn.configure(text=self._("generate"))
+        self.append_btn.configure(text=self._("append"))
+        
+        # Update sentences frame
+        self.sentences_frame.configure(text=self._("generated_sentences"))
+        self.export_btn.configure(text=self._("export_docx"))
+        self.show_all_btn.configure(text=self._("show_all"))
+        self.delete_btn.configure(text=self._("delete_all"))
+        
+        # Update progress label if visible
+        if not self.progress_frame.winfo_ismapped():
+            self.progress_label.configure(text=self._("generating"))
+        
+        # Update the words label
+        self.words_label.configure(text=self._("enter_words"))
+        
+        # Update all sentence widgets
+        for frame in self.sentence_widgets:
+            for child in frame.winfo_children():
+                if isinstance(child, ttk.Button):
+                    text = child.cget("text")
+                    if text in ["Show", "Hide", "显示", "隐藏"]:
+                        child.configure(text=self._("show") if text in ["Show", "显示"] else self._("hide"))
+                    elif text in ["Copy", "复制"]:
+                        child.configure(text=self._("copy"))
+                    elif text == "↻":  # Regenerate button
+                        continue
+                    elif text == "×":  # Delete button
+                        continue
+        
+        # Update prompt status label
+        if hasattr(self, 'prompt_status_label'):
+            current_text = self.prompt_status_label.cget("text")
+            if current_text == "Using custom prompt":
+                self.prompt_status_label.configure(text=self._("using_custom_prompt"))
+            else:
+                self.prompt_status_label.configure(text=self._("using_default_prompt"))
+
+    def toggle_prompt(self):
+        """Toggle between default and custom prompt."""
+        current_prompt = self.get_prompt_template()
+        if current_prompt == self.default_prompt:
+            # Currently using default prompt, try to switch to custom prompt
+            prompt_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), self.prompt_file)
+            if os.path.exists(prompt_file_path):
+                with open(prompt_file_path, 'r', encoding='utf-8') as f:
+                    prompt = f.read().strip()
+                    if '{word}' in prompt:
+                        self.prompt_status_label.configure(
+                            text=self._("using_custom_prompt"),
+                            foreground="green"
+                        )
+                        # Force get_prompt_template to read file again next time
+                        self._current_prompt = None
+                    else:
+                        messagebox.showwarning(
+                            self._("warning_title"),
+                            "Invalid prompt format: missing {word} placeholder.\nPlease add {word} to your prompt.txt file."
+                        )
+            else:
+                messagebox.showwarning(
+                    self._("warning_title"),
+                    "No valid custom prompt found.\nPlease create a prompt.txt file with {word} placeholder."
+                )
+        else:
+            # Currently using custom prompt, switch to default prompt
+            self.prompt_status_label.configure(
+                text=self._("using_default_prompt"),
+                foreground="gray"
+            )
+            # Force using default prompt
+            self._current_prompt = self.default_prompt
+
+    def test_prompt(self):
+        """Test prompt loading and display the result."""
+        print("\nTesting prompt loading:")
+        prompt = self.get_prompt_template()
+        print(f"Final prompt: {prompt}")
+        if prompt == self.default_prompt:
+            print("Using default prompt")
+        else:
+            print(f"Using custom prompt: {prompt}")
 
 if __name__ == "__main__":
     try:

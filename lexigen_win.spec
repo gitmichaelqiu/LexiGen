@@ -7,9 +7,10 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        ('Lexi.png', '.'),
+        ('icons/Lexi.png', '.'),
         ('prompt.txt', '.'),
-        ('requirements.txt', '.')
+        ('translations/*.json', 'translations'),
+        ('icons/Lexi.ico', 'icons'),
     ],
     hiddenimports=[
         'nltk',
@@ -18,15 +19,23 @@ a = Analysis(
         'nltk.tokenize',
         'docx',
         'docx.shared',
-        'docx.enum.text'
+        'docx.enum.text',
     ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        'matplotlib', 'numpy', 'pandas', 'scipy', 'PIL',
-        'PyQt5', 'PyQt6', 'PySide2', 'PySide6',
-        'IPython', 'jupyter', 'notebook'
+        'matplotlib',
+        'numpy',
+        'pandas',
+        'scipy',
+        'PIL',
+        'PyQt5',
+        'PyQt6',
+        'PySide2',
+        'PySide6',
+        'IPython',
+        'jupyter',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -56,6 +65,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='Lexi.ico',
+    icon='icons/Lexi.ico',
     version='file_version_info.txt'
-)
+) 
