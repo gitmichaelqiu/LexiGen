@@ -1,5 +1,7 @@
 # LexiGen
 
+[中文版](README_zh.md)
+
 <div align="center">
 
 ![LexiGen Logo](https://github.com/gitmichaelqiu/LexiGen/blob/main/Lexi.png?raw=true)
