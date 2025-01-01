@@ -50,8 +50,9 @@
         "generation_error_msg": "生成句子失败：{error}\n请检查服务器设置和连接。",
         "unexpected_error_msg": "发生意外错误：{error}",
         "startup_error_msg": "启动应用程序时出错：\n{error}",
-        "using_default_prompt": "使用默认提示",
-        "using_custom_prompt": "使用自定义提示",
-        "toggle_prompt": "切换提示词"
+        "using_default_prompt": "使用默认提示词",
+        "using_custom_prompt": "使用自定义提示词",
+        "toggle_prompt": "切换提示词",
+        "invalid_prompt_format": "提示词格式无效：缺少 {word} 占位符。\n请在 prompt.txt 文件中添加 {word} 占位符。"
     }
 } 

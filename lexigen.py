@@ -71,7 +71,8 @@ TRANSLATIONS = {
         "startup_error_msg": "Error starting application:\n{error}",
         "using_custom_prompt": "Using custom prompt",
         "using_default_prompt": "Using default prompt",
-        "toggle_prompt": "Toggle Prompt"
+        "toggle_prompt": "Toggle Prompt",
+        "invalid_prompt_format": "Invalid prompt format: missing {word} placeholder.\nPlease add {word} to your prompt.txt file."
     }
 }
 
@@ -574,6 +575,16 @@ class LexiGen:
             prompt_file_path = os.path.join(base_dir, self.prompt_file)
             print(f"Looking for prompt file at: {prompt_file_path}")
             
+            # If we have a stored custom prompt and we're not using default, use it
+            if hasattr(self, '_custom_prompt') and self._current_prompt != self.default_prompt:
+                print("Using stored custom prompt")
+                self.prompt_status_label.configure(
+                    text=self._("using_custom_prompt"),
+                    foreground="green"
+                )
+                self._current_prompt = self._custom_prompt
+                return self._current_prompt
+            
             if os.path.exists(prompt_file_path):
                 try:
                     with open(prompt_file_path, 'r', encoding='utf-8') as f:
@@ -598,6 +609,7 @@ class LexiGen:
                             foreground="green"
                         )
                         self._current_prompt = prompt
+                        self._custom_prompt = prompt  # Store the valid custom prompt
                         return prompt
                     else:
                         print(f"Invalid prompt: missing {{word}} placeholder")
@@ -1242,20 +1254,28 @@ class LexiGen:
             # Currently using default prompt, try to switch to custom prompt
             prompt_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), self.prompt_file)
             if os.path.exists(prompt_file_path):
-                with open(prompt_file_path, 'r', encoding='utf-8') as f:
-                    prompt = f.read().strip()
-                    if '{word}' in prompt:
-                        self.prompt_status_label.configure(
-                            text=self._("using_custom_prompt"),
-                            foreground="green"
-                        )
-                        # Force get_prompt_template to read file again next time
-                        self._current_prompt = None
-                    else:
-                        messagebox.showwarning(
-                            self._("warning_title"),
-                            "Invalid prompt format: missing {word} placeholder.\nPlease add {word} to your prompt.txt file."
-                        )
+                try:
+                    with open(prompt_file_path, 'r', encoding='utf-8') as f:
+                        prompt = f.read().strip()
+                        if '{word}' in prompt:
+                            self.prompt_status_label.configure(
+                                text=self._("using_custom_prompt"),
+                                foreground="green"
+                            )
+                            # Store the valid custom prompt
+                            self._custom_prompt = prompt
+                            # Force get_prompt_template to read file again next time
+                            self._current_prompt = None
+                        else:
+                            messagebox.showwarning(
+                                self._("warning_title"),
+                                self._("invalid_prompt_format")
+                            )
+                except Exception as e:
+                    messagebox.showwarning(
+                        self._("warning_title"),
+                        f"{self._('prompt_error_msg').format(error=str(e))}"
+                    )
             else:
                 messagebox.showwarning(
                     self._("warning_title"),
@@ -1267,6 +1287,8 @@ class LexiGen:
                 text=self._("using_default_prompt"),
                 foreground="gray"
             )
+            # Store the current prompt as custom prompt before switching to default
+            self._custom_prompt = current_prompt
             # Force using default prompt
             self._current_prompt = self.default_prompt
 
