@@ -34,9 +34,9 @@ LexiGen 是一款完全免费的首字母填空生成器，专为教育工作者
 
 ### 前置要求
 
-1. 安装 [Ollama](https://ollama.com)
+1. 安装 [Ollama](https://ollama.com) （若无法访问，蓝奏云中已经有安装包）
 2. 启动 Ollama 应用程序
-3. 打开终端（Windows：按 `Windows + R`，然后输入 `cmd`）并安装推荐模型：
+3. 打开终端（Windows：按 `Windows + R`，然后输入 `cmd`）并输入以下代码安装推荐模型（或自选模型）：
    ```bash
    ollama pull qwen2.5:3b
    ```
@@ -47,6 +47,7 @@ LexiGen 是一款完全免费的首字母填空生成器，专为教育工作者
 - 选择标准：模型大小应小于电脑内存/显存
 - 示例：8GB内存的电脑完全可以运行 qwen2.5:3b 模型
 - 可在 Ollama 中自行选择其他生成模型
+- 建议模型参数≥1.5b
 
 ### 安装步骤
 
