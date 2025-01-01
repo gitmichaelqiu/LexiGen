@@ -106,4 +106,7 @@ LexiGen is open source software licensed under the [GNU General Public License v
 Made for educators and learners
 
 If you like this project, please consider giving me a star ⭐️
+
+[![Star History Chart](https://api.star-history.com/svg?repos=gitmichaelqiu/LexiGen&type=Date)](https://star-history.com/#gitmichaelqiu/LexiGen&Date)
+
 </div>
