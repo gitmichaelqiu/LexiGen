@@ -34,7 +34,7 @@ LexiGen 是一款完全免费的首字母填空生成器，专为教育工作者
 
 ### 前置要求
 
-1. 安装 [Ollama](https://ollama.com) （若无法访问，蓝奏云中已经有安装包）
+1. 安装 [Ollama](https://ollama.com) （若无法访问，[天翼云盘](https://cloud.189.cn/web/share?code=2QbM7bABbEju)（访问码：0wfw））
 2. 启动 Ollama 应用程序
 3. 打开终端（Windows：按 `Windows + R`，然后输入 `cmd`）并输入以下代码安装推荐模型（或自选模型）：
    ```bash
@@ -99,5 +99,5 @@ LexiGen 是一款完全免费的首字母填空生成器，专为教育工作者
 
 感谢您对 LexiGen 的支持！
 
-— [@gitmichaelqiu](https://github.com/gitmichaelqiu)
+[![Star History Chart](https://api.star-history.com/svg?repos=gitmichaelqiu/LexiGen&type=Date)](https://star-history.com/#gitmichaelqiu/LexiGen&Date)
 </div> 
