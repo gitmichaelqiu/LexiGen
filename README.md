@@ -1,10 +1,10 @@
 # LexiGen
 
-[中文版](README_zh.md)
+[中文版](/translations/README_zh.md)
 
 <div align="center">
 
-![LexiGen Logo](https://github.com/gitmichaelqiu/LexiGen/blob/main/Lexi.png?raw=true)
+![LexiGen Logo](https://raw.githubusercontent.com/gitmichaelqiu/LexiGen/refs/heads/main/icons/Lexi.png)
 
 An AI-powered desktop application for generating educational fill-in-the-blank sentences.
 
