@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![LexiGen Logo](https://github.com/gitmichaelqiu/LexiGen/blob/main/Lexi.png?raw=true)
+<img width="80" alt="Lexi" src="https://github.com/user-attachments/assets/77944765-6d5d-455a-94b9-393452968b31" />
 
 专注于利用本地 Ollama AI 模型的首字母填空生成器
 
