@@ -103,29 +103,54 @@ class SettingsPanel(ttk.LabelFrame):
         self.language = language
         self.configure(text=get_translation(language, "settings"))
         
+        # Update all labels
         for child in self.winfo_children():
             if isinstance(child, ttk.Label):
                 text = child.cget("text")
-                if text.startswith("v"):
+                if text.startswith("v"):  # Version label
                     continue
-                elif text.endswith(":"):
-                    if "API" in text:
-                        child.configure(text=get_translation(language, "api_url"))
-                    elif "Model" in text:
-                        child.configure(text=get_translation(language, "model"))
-                    elif "Language" in text:
-                        child.configure(text=get_translation(language, "language"))
+                # Update specific labels with their translations
+                elif "API" in text or "api" in text:
+                    child.configure(text=get_translation(language, "api_url"))
+                elif "Model" in text.lower():
+                    child.configure(text=get_translation(language, "model"))
+                elif "Language" in text.lower():
+                    child.configure(text=get_translation(language, "language"))
+
+        # Update status label based on current state
+        if hasattr(self, 'status_label'):
+            if self.api_service.server_connected:
+                self.status_label.config(
+                    text=get_translation(language, "server_status_connected"),
+                    foreground="green"
+                )
+            else:
+                self.status_label.config(
+                    text=get_translation(language, "server_status_not_connected"),
+                    foreground="red"
+                )
         
+        # Update prompt status label
+        if hasattr(self, 'prompt_status_label'):
+            current_text = self.prompt_status_label.cget("text")
+            if "default" in current_text.lower() or "默认" in current_text:
+                self.prompt_status_label.configure(text=get_translation(language, "using_default_prompt"))
+            else:
+                self.prompt_status_label.configure(text=get_translation(language, "using_custom_prompt"))
+        
+        # Update buttons
         self.check_server_btn.configure(text=get_translation(language, "check_server"))
         self.help_btn.configure(text=get_translation(language, "setup_help"))
         
-        current_text = self.update_btn.cget("text")
-        if current_text in ["New version available", "有新版本"]:
-            self.update_btn.configure(text=get_translation(language, "new_version"))
-        elif current_text in ["Up to date", "已是最新"]:
-            self.update_btn.configure(text=get_translation(language, "up_to_date"))
-        else:
-            self.update_btn.configure(text=get_translation(language, "check_updates"))
+        # Update update button based on current state
+        if hasattr(self, 'update_btn'):
+            current_text = self.update_btn.cget("text")
+            if current_text in ["New version available", "有新版本", get_translation(self.language, "new_version")]:
+                self.update_btn.configure(text=get_translation(language, "new_version"))
+            elif current_text in ["Up to date", "已是最新", get_translation(self.language, "up_to_date")]:
+                self.update_btn.configure(text=get_translation(language, "up_to_date"))
+            else:
+                self.update_btn.configure(text=get_translation(language, "check_updates"))
     
     def update_update_button(self, status):
         if status == "new_version":

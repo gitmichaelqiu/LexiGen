@@ -2,10 +2,12 @@ import nltk
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import wordnet
 from tkinter import messagebox
+from models.translations import get_translation
 
 class WordProcessor:
-    def __init__(self):
+    def __init__(self, language="English"):
         self.lemmatizer = None
+        self.language = language
         self.initialize_nltk()
 
     def initialize_nltk(self):
@@ -16,8 +18,8 @@ class WordProcessor:
             return True
         except (LookupError, ImportError, AttributeError) as e:
             messagebox.showerror(
-                "Error",
-                "Failed to initialize word variation detection.\nThis may affect some functionality."
+                get_translation(self.language, "error_title"),
+                get_translation(self.language, "unexpected_error_msg").format(error="Failed to initialize word variation detection")
             )
             return False
 

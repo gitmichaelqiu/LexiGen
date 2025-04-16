@@ -1,6 +1,10 @@
 import tkinter as tk
 from tkinter import ttk
 from models.translations import get_translation
+from tkinter import filedialog, simpledialog, messagebox
+from docx import Document
+from docx.shared import Pt, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 class SentenceWidgetManager(ttk.LabelFrame):
     def __init__(self, parent, language, word_processor, api_service):
@@ -175,8 +179,73 @@ class SentenceWidgetManager(ttk.LabelFrame):
     
     def export_docx(self):
         """Export sentences to a Word document."""
-        # Implement document export logic here
-        pass
+        if not self.sentence_widgets:
+            messagebox.showwarning(
+                get_translation(self.language, "warning_title"),
+                get_translation(self.language, "no_sentences_warning")
+            )
+            return
+        
+        # Get document title from user
+        title = simpledialog.askstring(
+            get_translation(self.language, "document_title_prompt"),
+            get_translation(self.language, "document_title_prompt"),
+            initialvalue="Fill in the Blank"
+        )
+        if not title:
+            return
+        
+        # Ask for save location
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".docx",
+            filetypes=[("Word Document", "*.docx")],
+            title=get_translation(self.language, "save_document_title"),
+            initialfile=f"{title}.docx"
+        )
+        
+        if not file_path:
+            return
+        
+        # Create document
+        doc = Document()
+        
+        # Add title
+        title_paragraph = doc.add_paragraph()
+        title_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        title_run = title_paragraph.add_run(title)
+        title_run.bold = True
+        title_run.font.size = Pt(16)
+        
+        # Add sentences
+        for i, frame in enumerate(self.sentence_widgets, 1):
+            if frame.winfo_exists():
+                text_widget = frame.text_widget
+                
+                # Original sentence for reference (shown)
+                para = doc.add_paragraph()
+                para.add_run(f"{i}. ").bold = True
+                para.add_run(text_widget.original_sentence)
+                
+                # Masked sentence (with blanks for exercise)
+                para = doc.add_paragraph()
+                para.add_run(f"{i}. ").bold = True
+                para.add_run(text_widget.masked_sentence)
+                
+                # Add a space between sentence pairs
+                doc.add_paragraph()
+        
+        # Save the document
+        try:
+            doc.save(file_path)
+            messagebox.showinfo(
+                get_translation(self.language, "export_success_title"),
+                get_translation(self.language, "export_success_msg")
+            )
+        except Exception as e:
+            messagebox.showerror(
+                get_translation(self.language, "error_title"),
+                get_translation(self.language, "unexpected_error_msg").format(error=str(e))
+            )
 
     def show_all_words(self):
         """Show or hide all words in all sentences."""
@@ -246,3 +315,41 @@ class SentenceWidgetManager(ttk.LabelFrame):
         """Regenerate sentence for a word."""
         # Implement sentence regeneration logic here
         pass
+
+    def update_texts(self, language):
+        """Update all texts in the widget after language change."""
+        self.language = language
+        
+        # Update the frame title
+        self.configure(text=get_translation(language, "generated_sentences"))
+        
+        # Update control buttons
+        self.export_btn.configure(text=get_translation(language, "export_docx"))
+        
+        # Update show/hide all button based on its current state
+        if hasattr(self, 'show_all_btn'):
+            current_text = self.show_all_btn.cget("text")
+            if current_text == get_translation(self.language, "hide_all") or "hide" in current_text.lower() or "隐藏" in current_text:
+                self.show_all_btn.configure(text=get_translation(language, "hide_all"))
+            else:
+                self.show_all_btn.configure(text=get_translation(language, "show_all"))
+        
+        # Update delete button
+        self.delete_btn.configure(text=get_translation(language, "delete_all"))
+        
+        # Update individual sentence widgets
+        for frame in self.sentence_widgets:
+            if frame.winfo_exists():
+                # Update show/hide button for each sentence
+                if hasattr(frame.text_widget, 'show_button'):
+                    if frame.text_widget.word_visible:
+                        frame.text_widget.show_button.configure(text=get_translation(language, "hide"))
+                    else:
+                        frame.text_widget.show_button.configure(text=get_translation(language, "show"))
+                
+                # Update other buttons in each sentence frame
+                for child in frame.winfo_children():
+                    if isinstance(child, ttk.Button):
+                        current_text = child.cget("text")
+                        if current_text in ["Copy", "复制", get_translation(self.language, "copy")]:
+                            child.configure(text=get_translation(language, "copy"))

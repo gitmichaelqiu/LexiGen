@@ -19,7 +19,7 @@ class MainWindow:
         
         # Initialize services
         self.language = DEFAULT_CONFIG["language"]
-        self.word_processor = WordProcessor()
+        self.word_processor = WordProcessor(self.language)
         self.api_service = APIService(self.language)
         self.document_service = DocumentService(self.language)
         self.update_service = UpdateService(self.language)
@@ -66,8 +66,10 @@ class MainWindow:
                                      command=lambda: self.generate_sentences(append=False))
         self.append_btn = ttk.Button(buttons_frame, text=get_translation(self.language, "append"), 
                                    command=lambda: self.generate_sentences(append=True))
-        self.append_btn.pack_forget()
+        
+        # Initially only show generate button
         self.generate_btn.pack(side=tk.LEFT)
+        self.append_btn.pack_forget()
         
         # Progress Bar
         self.progress_frame = ttk.Frame(self.input_frame)
@@ -103,6 +105,7 @@ class MainWindow:
         self.api_service.language = new_language
         self.document_service.language = new_language
         self.update_service.language = new_language
+        self.word_processor.language = new_language
         self.update_ui_texts()
     
     def update_ui_texts(self):
