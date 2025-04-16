@@ -1,0 +1,159 @@
+import tkinter as tk
+from tkinter import ttk, scrolledtext
+from models.config import VERSION, DEFAULT_CONFIG
+from models.translations import load_translations, get_translation
+from models.word_processor import WordProcessor
+from services.api_service import APIService
+from services.document_service import DocumentService
+from services.update_service import UpdateService
+from ui.components.sentence_widget import SentenceWidgetManager
+from ui.components.settings_panel import SettingsPanel
+import os
+import sys
+
+class MainWindow:
+    def __init__(self, root):
+        self.root = root
+        self.root.title(f"LexiGen v{VERSION} - Fill-in-the-Blank Generator")
+        self.root.geometry("1100x800")
+        
+        # Initialize services
+        self.language = DEFAULT_CONFIG["language"]
+        self.word_processor = WordProcessor()
+        self.api_service = APIService(self.language)
+        self.document_service = DocumentService(self.language)
+        self.update_service = UpdateService(self.language)
+        
+        # Load translations
+        self.available_languages = load_translations()
+        
+        # Setup UI
+        self.setup_ui()
+        
+        # Initial setup
+        self.root.after(100, self.initial_setup)
+        self.root.after(200, lambda: self.check_for_updates(show_message=False))
+        
+    def setup_ui(self):
+        self.main_container = ttk.Frame(self.root, padding="10")
+        self.main_container.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        
+        # Create settings panel
+        self.settings_panel = SettingsPanel(
+            self.main_container,
+            self.language,
+            self.available_languages,
+            self.api_service,
+            self.on_language_change
+        )
+        self.settings_panel.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        
+        # Input Frame
+        self.input_frame = ttk.LabelFrame(self.main_container, text=get_translation(self.language, "input_words"), padding="5")
+        self.input_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        
+        # Word Input
+        self.word_input = scrolledtext.ScrolledText(self.input_frame, height=3, width=70)
+        self.word_input.grid(row=0, column=0, columnspan=2, padx=5, pady=5)
+        self.words_label = ttk.Label(self.input_frame, text=get_translation(self.language, "enter_words"))
+        self.words_label.grid(row=1, column=0, sticky=tk.W, padx=5)
+        
+        # Buttons Frame for Generate and Append
+        buttons_frame = ttk.Frame(self.input_frame)
+        buttons_frame.grid(row=1, column=1, sticky=tk.E, padx=5)
+        
+        self.generate_btn = ttk.Button(buttons_frame, text=get_translation(self.language, "generate"), 
+                                     command=lambda: self.generate_sentences(append=False))
+        self.append_btn = ttk.Button(buttons_frame, text=get_translation(self.language, "append"), 
+                                   command=lambda: self.generate_sentences(append=True))
+        self.append_btn.pack_forget()
+        self.generate_btn.pack(side=tk.LEFT)
+        
+        # Progress Bar
+        self.progress_frame = ttk.Frame(self.input_frame)
+        self.progress_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=5, pady=5)
+        self.progress_label = ttk.Label(self.progress_frame, text=get_translation(self.language, "generating"))
+        self.progress_label.pack(side=tk.LEFT, padx=(0, 5))
+        self.progress_bar = ttk.Progressbar(self.progress_frame, mode='determinate')
+        self.progress_bar.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.progress_frame.grid_remove()
+        
+        # Sentences Frame
+        self.sentence_manager = SentenceWidgetManager(
+            self.main_container,
+            self.language,
+            self.word_processor,
+            self.api_service
+        )
+        self.sentence_manager.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
+        
+        # Configure grid weights
+        self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=1)
+        self.main_container.columnconfigure(0, weight=1)
+        self.main_container.rowconfigure(2, weight=1)
+        
+    def initial_setup(self):
+        if self.api_service.check_server_status(show_message=False):
+            self.api_service.fetch_models()
+            self.settings_panel.update_model_list(self.api_service.available_models)
+    
+    def on_language_change(self, new_language):
+        self.language = new_language
+        self.api_service.language = new_language
+        self.document_service.language = new_language
+        self.update_service.language = new_language
+        self.update_ui_texts()
+    
+    def update_ui_texts(self):
+        self.input_frame.configure(text=get_translation(self.language, "input_words"))
+        self.words_label.configure(text=get_translation(self.language, "enter_words"))
+        self.generate_btn.configure(text=get_translation(self.language, "generate"))
+        self.append_btn.configure(text=get_translation(self.language, "append"))
+        self.progress_label.configure(text=get_translation(self.language, "generating"))
+        
+        self.settings_panel.update_texts(self.language)
+        self.sentence_manager.update_texts(self.language)
+    
+    def generate_sentences(self, append=False):
+        words = [word.strip().lower() for word in self.word_input.get("1.0", tk.END).strip().split(",")]
+        words = [w for w in words if w]
+        
+        if not words:
+            return
+        
+        if not append:
+            self.sentence_manager.clear_sentences()
+            
+        self.word_input.delete("1.0", tk.END)
+        self.progress_bar['maximum'] = len(words)
+        self.progress_bar['value'] = 0
+        self.progress_frame.grid()
+        self.generate_btn.configure(state="disabled")
+        
+        if hasattr(self, 'append_btn'):
+            self.append_btn.configure(state="disabled")
+        
+        self.root.update()
+        
+        for i, word in enumerate(words):
+            sentence = self.api_service.generate_sentence(word, DEFAULT_CONFIG["default_prompt"])
+            if sentence:
+                self.sentence_manager.add_sentence(word, sentence)
+            else:
+                self.progress_frame.grid_remove()
+                return
+            
+            self.progress_bar['value'] = i + 1
+            self.progress_label.configure(text=f"{get_translation(self.language, 'generating')} ({i + 1}/{len(words)})")
+            self.root.update()
+        
+        self.progress_frame.grid_remove()
+        if self.api_service.server_connected:
+            self.generate_btn.configure(state="normal")
+            if hasattr(self, 'append_btn'):
+                self.append_btn.configure(state="normal")
+    
+    def check_for_updates(self, show_message=True):
+        result = self.update_service.check_for_updates(show_message)
+        self.settings_panel.update_update_button(result)
