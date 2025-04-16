@@ -66,7 +66,7 @@ LexiGen 是一款 **开源** 的首字母填空生成器，**零成本** 使用�
 
 "Lexi" 来源于 "lexicon"（词典）。
 
-我曾考虑过 "FibGen" 的名字 (**F**ill **I**n the **B**lank)，但因为 "fib" 意为谎言，改名字被替换为 "LexiGen"。
+我曾考虑过 "FibGen" 的名字 (**F**ill **I**n the **B**lank)，但因为 "fib" 意为谎言，名字被替换为 "LexiGen"。
 
 ## 🤝 贡献
 
