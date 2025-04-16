@@ -20,7 +20,7 @@
 
 ## 🎯 概述
 
-LexiGen 是一款 **开源** 的首字母填空生成器，**零成本** 使用本地 Ollama AI生成。
+LexiGen 是一款 **开源** 的首字母填空生成器，**零成本** 使用本地 Ollama AI。
 
 ## 🚀 下载安装
 
@@ -28,7 +28,7 @@ LexiGen 是一款 **开源** 的首字母填空生成器，**零成本** 使用�
 
 1. 安装 [Ollama](https://ollama.com)
 2. 启动 Ollama 应用程序
-3. 打开终端（Windows：按 `Windows + R`，然后输入 `cmd`），并安装一个模型（推荐 `qwen2.5:3b` 或 `qwen2.5:0.5b`（模型更小）：
+3. 打开终端（Windows：按 `Windows + R`，然后输入 `cmd`），并安装一个模型（推荐 `qwen2.5:3b`（质量更高，占用1.3GB） 或 `qwen2.5:0.5b`（模型更小，占用500MB）)：
 
   ```bash
   ollama pull qwen2.5:3b
