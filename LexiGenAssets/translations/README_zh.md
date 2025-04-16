@@ -14,7 +14,7 @@
 
 
 
-https://github.com/user-attachments/assets/b2147a30-ac54-4e58-80f0-9409f6d978c4
+<img width="1318" alt="Screenshot 2025-04-16 at 21 32 15" src="https://github.com/user-attachments/assets/c85c0ce1-dd8f-40f0-975a-e581a5968373" />
 
 
 
