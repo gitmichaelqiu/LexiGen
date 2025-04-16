@@ -8,13 +8,14 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 import platform
 
 class SentenceWidgetManager(ttk.LabelFrame):
-    def __init__(self, parent, language, word_processor, api_service):
+    def __init__(self, parent, language, word_processor, api_service, on_sentences_changed=None):
         super().__init__(parent, text=get_translation(language, "generated_sentences"), padding="5")
         self.language = language
         self.word_processor = word_processor
         self.api_service = api_service
         self.sentence_widgets = []
         self.parent = parent
+        self.on_sentences_changed = on_sentences_changed
         
         # Buttons Frame
         self.buttons_frame = ttk.Frame(self)
@@ -107,12 +108,17 @@ class SentenceWidgetManager(ttk.LabelFrame):
     def add_sentence(self, word, sentence):
         frame = ttk.Frame(self.sentences_container)
         frame.grid(sticky=(tk.W, tk.E), pady=2)
-        frame.columnconfigure(0, weight=1)
+        
+        # Create a 2-column grid layout
+        # First column for text widget (will stretch)
+        # Second column for buttons (right-aligned)
+        frame.columnconfigure(0, weight=1)  # Text column stretches
+        frame.columnconfigure(1, weight=0)  # Button column fixed width
         
         # Create masked sentence
         masked_sentence = self._create_masked_sentence(word, sentence)
         
-        # Text widget
+        # Text widget in first column
         text_widget = tk.Text(frame, wrap=tk.WORD, cursor="arrow", height=1, width=50)
         text_widget.insert("1.0", masked_sentence)
         text_widget.configure(state="disabled", selectbackground=text_widget.cget("background"), 
@@ -135,39 +141,43 @@ class SentenceWidgetManager(ttk.LabelFrame):
         text_widget.after(10, adjust_text_height)
         text_widget.bind('<Configure>', lambda e: text_widget.after(10, adjust_text_height))
         
-        # Buttons
+        # Create a frame for the buttons in the second column
+        buttons_frame = ttk.Frame(frame)
+        buttons_frame.grid(row=0, column=1, sticky=tk.E)
+        
+        # Buttons inside the buttons_frame
         show_btn = ttk.Button(
-            frame,
+            buttons_frame,
             text=get_translation(self.language, "show"),
             command=lambda: self._toggle_word(text_widget, show_btn)
         )
-        show_btn.grid(row=0, column=1, padx=(0, 5))
+        show_btn.pack(side=tk.LEFT, padx=(0, 2))
         
         copy_btn = ttk.Button(
-            frame,
+            buttons_frame,
             text=get_translation(self.language, "copy"),
             command=lambda: self._copy_sentence(text_widget)
         )
-        copy_btn.grid(row=0, column=2, padx=(0, 5))
+        copy_btn.pack(side=tk.LEFT, padx=(0, 2))
         
         # Store original word for regeneration
         original_word = word
         
         regen_btn = ttk.Button(
-            frame,
+            buttons_frame,
             text="↻",
             width=2,
             command=lambda w=original_word, f=frame: self._regenerate_sentence(w, f)
         )
-        regen_btn.grid(row=0, column=3, padx=(0, 5))
+        regen_btn.pack(side=tk.LEFT, padx=(0, 2))
         
         delete_btn = ttk.Button(
-            frame,
+            buttons_frame,
             text="×",
             width=2,
             command=lambda: self._delete_sentence(frame)
         )
-        delete_btn.grid(row=0, column=4)
+        delete_btn.pack(side=tk.LEFT)
         
         # Store references
         text_widget.original_sentence = sentence
@@ -179,6 +189,10 @@ class SentenceWidgetManager(ttk.LabelFrame):
         
         self.sentence_widgets.append(frame)
         self._update_buttons_state()
+        
+        # Notify about sentence change
+        if self.on_sentences_changed:
+            self.on_sentences_changed(len(self.sentence_widgets) > 0)
         
         return frame
     
@@ -291,17 +305,24 @@ class SentenceWidgetManager(ttk.LabelFrame):
             if frame.winfo_exists():
                 text_widget = frame.text_widget
                 
-                # Extract all blanked words from the sentence
-                original = text_widget.original_sentence
-                masked = text_widget.masked_sentence
-                
-                # Find all blanks and their answers
-                words = self._extract_blanked_words(original, masked)
-                
-                if words:
+                # Extract words from the text widget
+                if hasattr(text_widget, 'original_word'):
+                    # Use the stored original word (the word used to generate the sentence)
                     para = doc.add_paragraph()
                     para.add_run(f"{i}. ").bold = True
-                    para.add_run(", ".join(words))
+                    para.add_run(text_widget.original_word)
+                else:
+                    # Fallback to extracting words from the sentence
+                    original = text_widget.original_sentence
+                    masked = text_widget.masked_sentence
+                    
+                    # Find all blanks and their answers
+                    words = self._extract_blanked_words(original, masked)
+                    
+                    if words:
+                        para = doc.add_paragraph()
+                        para.add_run(f"{i}. ").bold = True
+                        para.add_run(", ".join(words))
         
         # Save the document
         try:
@@ -317,22 +338,42 @@ class SentenceWidgetManager(ttk.LabelFrame):
             )
 
     def _extract_blanked_words(self, original, masked):
-        """Extract words that have been blanked in the masked sentence."""
+        """Extract words that have been blanked out in the masked sentence."""
         blanked_words = []
         
-        # Convert to lowercase for comparison
-        original_lower = original.lower()
-        masked_lower = masked.lower()
+        # If there's no underscore in the masked sentence, there are no blanks
+        if '_' not in masked:
+            return []
         
-        # Find all words that appear in original but as blanks in masked
-        words = original.split()
+        # Find all underscored patterns in the masked sentence
+        mask_patterns = []
+        words = masked.split()
         for word in words:
-            word_lower = word.lower().strip('.,!?;:"\'()')
-            if len(word_lower) > 1:  # Skip single-letter words
-                # Check if word is blanked (has underscores) in masked
-                mask_pattern = word_lower[0] + '_' * (len(word_lower) - 1)
-                if mask_pattern in masked_lower and word_lower not in blanked_words:
-                    blanked_words.append(word)
+            if '_' in word:
+                # Clean the word of punctuation
+                clean_word = word.strip('.,!?;:"\'()')
+                if clean_word and '_' in clean_word:
+                    mask_patterns.append(clean_word)
+        
+        # For each mask pattern, find the corresponding original word
+        for mask in mask_patterns:
+            # The mask pattern is typically first letter + underscores
+            if len(mask) > 1 and '_' in mask:
+                prefix = mask[0]
+                length = len(mask)
+                
+                # Look for words in the original sentence that match this pattern
+                for orig_word in original.split():
+                    # Clean the original word
+                    clean_orig = orig_word.strip('.,!?;:"\'()')
+                    
+                    # Check if this could be our word
+                    if (len(clean_orig) == length and 
+                        clean_orig[0].lower() == prefix.lower() and
+                        clean_orig.lower() not in [w.lower() for w in blanked_words]):
+                        
+                        blanked_words.append(clean_orig)
+                        break
         
         return blanked_words
 
@@ -398,6 +439,10 @@ class SentenceWidgetManager(ttk.LabelFrame):
         # Force update to clear any remaining visual artifacts
         self.update_idletasks()
         self.canvas.update()
+        
+        # Notify about sentence change
+        if self.on_sentences_changed:
+            self.on_sentences_changed(False)
 
     def _copy_sentence(self, text_widget):
         """Copy sentence to clipboard."""
@@ -444,6 +489,30 @@ class SentenceWidgetManager(ttk.LabelFrame):
             self.sentence_widgets.remove(frame)
         frame.destroy()
         self._update_buttons_state()
+        
+        # Notify about sentence change
+        if self.on_sentences_changed:
+            self.on_sentences_changed(len(self.sentence_widgets) > 0)
+        
+        # If this was the last sentence, reset the canvas completely
+        if not self.sentence_widgets:
+            # Reset canvas and container similar to clear_sentences
+            self.canvas.delete("all")  # Delete all canvas items
+            
+            # Recreate the sentences container
+            self.sentences_container.destroy()
+            self.sentences_container = ttk.Frame(self.canvas)
+            self.canvas_frame = self.canvas.create_window((0, 0), window=self.sentences_container, anchor="nw")
+            
+            # Rebind events
+            self.sentences_container.bind('<Configure>', self._on_frame_configure)
+            
+            # Reset canvas scroll region
+            self.canvas.configure(scrollregion=(0, 0, 0, 0))
+            
+            # Force update to clear any remaining visual artifacts
+            self.update_idletasks()
+            self.canvas.update()
 
     def _regenerate_sentence(self, word, frame):
         """Regenerate sentence for a word."""

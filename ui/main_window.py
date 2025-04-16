@@ -30,7 +30,10 @@ class MainWindow:
         # Setup UI
         self.setup_ui()
         
-        # Initial setup
+        # Immediately check server status (not waiting for the scheduled checks)
+        self.api_service.check_server_status(show_message=False)
+        
+        # Initial setup (scheduled to run after UI is ready)
         self.root.after(100, self.initial_setup)
         self.root.after(200, lambda: self.check_for_updates(show_message=False))
         
@@ -85,7 +88,8 @@ class MainWindow:
             self.main_container,
             self.language,
             self.word_processor,
-            self.api_service
+            self.api_service,
+            self.on_sentences_changed
         )
         self.sentence_manager.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
         
@@ -96,8 +100,8 @@ class MainWindow:
         self.main_container.rowconfigure(2, weight=1)
         
     def initial_setup(self):
-        # Automatically check server status when the app starts
-        server_connected = self.api_service.check_server_status(show_message=False)
+        # Use already checked server status
+        server_connected = self.api_service.server_connected
         
         # If server is connected, fetch available models
         if server_connected:
@@ -106,8 +110,14 @@ class MainWindow:
             
             # Show append button after successful server connection
             self.append_btn.pack(side=tk.LEFT, padx=(5, 0))
+        
+        # Always update the status display, regardless of connection state
+        if server_connected:
+            self.settings_panel.status_label.config(
+                text=get_translation(self.language, "server_status_connected"),
+                foreground="green"
+            )
         else:
-            # Update UI to show server not connected
             self.settings_panel.status_label.config(
                 text=get_translation(self.language, "server_status_not_connected"),
                 foreground="red"
@@ -180,3 +190,14 @@ class MainWindow:
     def check_for_updates(self, show_message=True):
         result = self.update_service.check_for_updates(show_message)
         self.settings_panel.update_update_button(result)
+
+    def on_sentences_changed(self, has_sentences):
+        """Called when sentences are added or removed."""
+        if hasattr(self, 'append_btn'):
+            if has_sentences and self.api_service.server_connected:
+                self.append_btn.configure(state="normal")
+                # Make sure it's visible when it should be
+                if not self.append_btn.winfo_ismapped():
+                    self.append_btn.pack(side=tk.LEFT, padx=(5, 0))
+            else:
+                self.append_btn.configure(state="disabled")
