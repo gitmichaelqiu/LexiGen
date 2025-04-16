@@ -3,13 +3,11 @@
 block_cipher = None
 
 a = Analysis(
-    ['lexigen.py'],
+    ['main.py'],
     pathex=[],
     binaries=[],
     datas=[
         ('icons/Lexi.png', '.'),
-        ('prompt.txt', '.'),
-        ('translations/*.json', 'translations'),
         ('icons/Lexi.icns', 'icons'),
     ],
     hiddenimports=[
@@ -80,8 +78,8 @@ app = BUNDLE(
     icon='icons/Lexi.icns',
     bundle_identifier='com.michaelqiu.lexigen',
     info_plist={
-        'CFBundleShortVersionString': '1.1.1',
-        'CFBundleVersion': '1.1.1',
+        'CFBundleShortVersionString': '1.3.0',
+        'CFBundleVersion': '1.3.0',
         'NSHighResolutionCapable': True,
         'CFBundleDisplayName': 'LexiGen',
         'CFBundleName': 'LexiGen',
