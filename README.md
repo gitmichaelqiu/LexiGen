@@ -15,9 +15,7 @@ An AI-powered desktop application for generating educational fill-in-the-blank s
 </div>
 
 
-
-https://github.com/user-attachments/assets/b2147a30-ac54-4e58-80f0-9409f6d978c4
-
+<img width="1318" alt="Screenshot 2025-04-16 at 21 32 15" src="https://github.com/user-attachments/assets/c85c0ce1-dd8f-40f0-975a-e581a5968373" />
 
 
 ## 🎯 Overview
@@ -31,6 +29,7 @@ LexiGen is an **open-source** fill-in-the-blank problems generator using local A
 1. Install [Ollama](https://ollama.com)
 2. Launch the Ollama app
 3. Open the terminal (Windows: press `Windows + R`, then type `cmd`) and install a model (suggesting `qwen2.5:3b` or `qwen2.5:0.5b` (smaller)):
+
    ```bash
    ollama pull qwen2.5:3b
    ```
