@@ -1,6 +1,6 @@
 import os
 import json
-from models.config import DEFAULT_CONFIG
+from models.config import DEFAULT_CONFIG, get_settings_path
 
 class SettingsService:
     """Service for managing application settings and persistence."""
@@ -8,9 +8,9 @@ class SettingsService:
     # Define settings that should not be persisted
     EXCLUDED_SETTINGS = ['prompt_file', 'default_prompt']
     
-    def __init__(self, config_path="settings.json"):
+    def __init__(self, config_path=None):
         """Initialize settings service with specified config path."""
-        self.config_path = config_path
+        self.config_path = config_path if config_path else get_settings_path()
         self.settings = {}
         self.load_settings()
     

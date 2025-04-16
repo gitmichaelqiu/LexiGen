@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+from models.config import get_translations_path
 
 TRANSLATIONS = {
     "English": {
@@ -64,23 +65,10 @@ TRANSLATIONS = {
 def load_translations():
     """Load translations from external files."""
     try:
-        # Get the application's base directory
-        if getattr(sys, 'frozen', False):
-            if sys.platform == 'darwin':
-                base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable))))
-            else:
-                base_dir = os.path.dirname(sys.executable)
-        else:
-            base_dir = os.path.dirname(os.path.abspath(__file__))
+        # Get the translations directory path
+        translations_dir = get_translations_path()
         
-        translations_dir = os.path.join(base_dir, "translations")
-        
-        if not os.path.exists(translations_dir):
-            try:
-                os.makedirs(translations_dir)
-            except Exception:
-                pass
-        
+        # Check for translation files
         if os.path.exists(translations_dir):
             try:
                 files = os.listdir(translations_dir)
