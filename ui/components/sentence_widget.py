@@ -5,6 +5,7 @@ from tkinter import filedialog, simpledialog, messagebox
 from docx import Document
 from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+import platform
 
 class SentenceWidgetManager(ttk.LabelFrame):
     def __init__(self, parent, language, word_processor, api_service):
@@ -13,6 +14,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
         self.word_processor = word_processor
         self.api_service = api_service
         self.sentence_widgets = []
+        self.parent = parent
         
         # Buttons Frame
         self.buttons_frame = ttk.Frame(self)
@@ -46,17 +48,61 @@ class SentenceWidgetManager(ttk.LabelFrame):
         
         self.sentences_container.bind('<Configure>', self._on_frame_configure)
         self.canvas.bind('<Configure>', self._on_canvas_configure)
-        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        
+        # Platform specific mousewheel bindings
+        self._bind_mouse_wheel()
+        
+    def _bind_mouse_wheel(self):
+        """Bind mouse wheel scrolling based on platform."""
+        system = platform.system()
+        
+        if system == "Windows":
+            # Windows uses <MouseWheel>
+            self.canvas.bind("<MouseWheel>", self._on_mousewheel_windows)
+            self.bind("<MouseWheel>", self._on_mousewheel_windows)
+        elif system == "Darwin":
+            # macOS uses <MouseWheel> with different delta values
+            self.canvas.bind("<MouseWheel>", self._on_mousewheel_macos)
+            self.bind("<MouseWheel>", self._on_mousewheel_macos)
+        else:
+            # Linux uses Button-4 and Button-5
+            self.canvas.bind("<Button-4>", self._on_mousewheel_linux)
+            self.canvas.bind("<Button-5>", self._on_mousewheel_linux)
+            self.bind("<Button-4>", self._on_mousewheel_linux)
+            self.bind("<Button-5>", self._on_mousewheel_linux)
+    
+    def _on_mousewheel_windows(self, event):
+        """Handle mouse wheel scrolling for Windows."""
+        if self.canvas.winfo_height() < self.sentences_container.winfo_height():
+            self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        return "break"
+    
+    def _on_mousewheel_macos(self, event):
+        """Handle mouse wheel scrolling for macOS."""
+        if self.canvas.winfo_height() < self.sentences_container.winfo_height():
+            self.canvas.yview_scroll(int(-1 * event.delta), "units")
+        return "break"
+    
+    def _on_mousewheel_linux(self, event):
+        """Handle mouse wheel scrolling for Linux."""
+        if self.canvas.winfo_height() < self.sentences_container.winfo_height():
+            if event.num == 4:
+                self.canvas.yview_scroll(-1, "units")
+            elif event.num == 5:
+                self.canvas.yview_scroll(1, "units")
+        return "break"
     
     def _on_frame_configure(self, event=None):
+        """Update the scrollregion to encompass the inner frame."""
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
     
     def _on_canvas_configure(self, event):
+        """Resize the inner frame to match the canvas."""
         self.canvas.itemconfig(self.canvas_frame, width=event.width)
-    
+        
     def _on_mousewheel(self, event):
-        if self.canvas.winfo_height() < self.sentences_container.winfo_height():
-            self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        """Legacy method, replaced by platform-specific methods."""
+        pass
     
     def add_sentence(self, word, sentence):
         frame = ttk.Frame(self.sentences_container)
@@ -220,23 +266,42 @@ class SentenceWidgetManager(ttk.LabelFrame):
         title_run.bold = True
         title_run.font.size = Pt(16)
         
-        # Add sentences
+        # Add exercises with blanks first
         for i, frame in enumerate(self.sentence_widgets, 1):
             if frame.winfo_exists():
                 text_widget = frame.text_widget
                 
-                # Original sentence for reference (shown)
-                para = doc.add_paragraph()
-                para.add_run(f"{i}. ").bold = True
-                para.add_run(text_widget.original_sentence)
-                
-                # Masked sentence (with blanks for exercise)
+                # Add exercise with blanks
                 para = doc.add_paragraph()
                 para.add_run(f"{i}. ").bold = True
                 para.add_run(text_widget.masked_sentence)
+        
+        # Add page break before answer key
+        doc.add_page_break()
+        
+        # Add answer key title
+        answer_title = doc.add_paragraph()
+        answer_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        answer_title_run = answer_title.add_run("Answer Key")
+        answer_title_run.bold = True
+        answer_title_run.font.size = Pt(14)
+        
+        # Extract and list all blanked words
+        for i, frame in enumerate(self.sentence_widgets, 1):
+            if frame.winfo_exists():
+                text_widget = frame.text_widget
                 
-                # Add a space between sentence pairs
-                doc.add_paragraph()
+                # Extract all blanked words from the sentence
+                original = text_widget.original_sentence
+                masked = text_widget.masked_sentence
+                
+                # Find all blanks and their answers
+                words = self._extract_blanked_words(original, masked)
+                
+                if words:
+                    para = doc.add_paragraph()
+                    para.add_run(f"{i}. ").bold = True
+                    para.add_run(", ".join(words))
         
         # Save the document
         try:
@@ -250,6 +315,26 @@ class SentenceWidgetManager(ttk.LabelFrame):
                 get_translation(self.language, "error_title"),
                 get_translation(self.language, "unexpected_error_msg").format(error=str(e))
             )
+
+    def _extract_blanked_words(self, original, masked):
+        """Extract words that have been blanked in the masked sentence."""
+        blanked_words = []
+        
+        # Convert to lowercase for comparison
+        original_lower = original.lower()
+        masked_lower = masked.lower()
+        
+        # Find all words that appear in original but as blanks in masked
+        words = original.split()
+        for word in words:
+            word_lower = word.lower().strip('.,!?;:"\'()')
+            if len(word_lower) > 1:  # Skip single-letter words
+                # Check if word is blanked (has underscores) in masked
+                mask_pattern = word_lower[0] + '_' * (len(word_lower) - 1)
+                if mask_pattern in masked_lower and word_lower not in blanked_words:
+                    blanked_words.append(word)
+        
+        return blanked_words
 
     def show_all_words(self):
         """Show or hide all words in all sentences."""
@@ -290,23 +375,61 @@ class SentenceWidgetManager(ttk.LabelFrame):
 
     def clear_sentences(self):
         """Delete all sentences."""
+        # First destroy all sentence widgets
         for widget in self.sentence_widgets:
             widget.destroy()
         self.sentence_widgets.clear()
         self._update_buttons_state()
         
+        # Reset canvas and container
+        self.canvas.delete("all")  # Delete all canvas items
+        
+        # Recreate the sentences container
+        self.sentences_container.destroy()
+        self.sentences_container = ttk.Frame(self.canvas)
+        self.canvas_frame = self.canvas.create_window((0, 0), window=self.sentences_container, anchor="nw")
+        
+        # Rebind events
+        self.sentences_container.bind('<Configure>', self._on_frame_configure)
+        
         # Reset canvas scroll region
         self.canvas.configure(scrollregion=(0, 0, 0, 0))
         
-        # Clear any background that might remain
-        self.update_idletasks()  # Ensure all pending drawing operations are completed
+        # Force update to clear any remaining visual artifacts
+        self.update_idletasks()
         self.canvas.update()
 
     def _copy_sentence(self, text_widget):
         """Copy sentence to clipboard."""
-        sentence = text_widget.get("1.0", tk.END).strip()
+        # Check if the word is visible and copy accordingly
+        if hasattr(text_widget, 'word_visible') and text_widget.word_visible:
+            # Copy the original sentence with filled blanks
+            sentence = text_widget.original_sentence
+        else:
+            # Copy the masked sentence with blanks
+            sentence = text_widget.masked_sentence
+        
+        # Strip any trailing newlines or spaces
+        sentence = sentence.strip()
+        
+        # Copy to clipboard
         self.clipboard_clear()
         self.clipboard_append(sentence)
+        
+        # Show brief visual feedback using the parent widget's status
+        for child in text_widget.master.winfo_children():
+            if isinstance(child, ttk.Button) and child.cget("text") == get_translation(self.language, "copy"):
+                original_text = child.cget("text")
+                child.configure(text="✓")
+                
+                # Reset the button text after a short delay
+                def reset_text():
+                    if child.winfo_exists():
+                        child.configure(text=original_text)
+                
+                # Schedule reset after 1 second
+                self.after(1000, reset_text)
+                break
 
     def _update_buttons_state(self):
         """Update the state of control buttons."""
