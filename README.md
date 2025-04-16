@@ -1,6 +1,6 @@
 # LexiGen
 
-[中文版](/translations/README_zh.md)
+[中文版](/LexiGenAssets/translations/README_zh.md)
 
 <div align="center">
 
@@ -22,18 +22,7 @@ https://github.com/user-attachments/assets/b2147a30-ac54-4e58-80f0-9409f6d978c4
 
 ## 🎯 Overview
 
-"Lexi" comes from "lexicon".
-
-LexiGen transforms vocabulary practice and language learning by automatically generating contextual fill-in-the-blank sentences. Leveraging Ollama's AI models, it creates engaging educational materials with just a few clicks.
-
-## ✨ Key Features
-
-- **Smart Generation**: AI-powered creation of contextually appropriate sentences
-- **Flexible Input**: Support for multiple words and their variations
-- **Easy Management**:
-  - One-click copying to clipboard
-  - Individual and bulk word visibility controls
-  - Show/Hide words, regenerate/delete sentences
+LexiGen is an **open-source** fill-in-the-blank problems generator using local AI with **Zero Cost**.
 
 ## 🚀 Quick Start
 
@@ -41,7 +30,7 @@ LexiGen transforms vocabulary practice and language learning by automatically ge
 
 1. Install [Ollama](https://ollama.com)
 2. Launch the Ollama app
-3. Open the terminal (Windows: press `Windows + R`, then type `cmd`) and install a compatible model (e.g. qwen2.5:3b):
+3. Open the terminal (Windows: press `Windows + R`, then type `cmd`) and install a model (suggesting `qwen2.5:3b` or `qwen2.5:0.5b` (smaller)):
    ```bash
    ollama pull qwen2.5:3b
    ```
@@ -51,32 +40,21 @@ LexiGen transforms vocabulary practice and language learning by automatically ge
 1. Download LexiGen from the [releases page](https://github.com/yourusername/lexigen/releases)
 2. Run the installer for your platform
 3. Launch LexiGen
-4. Verify Ollama connection using the 'Check Server' button
-
-## 📖 Usage Guide
-
-### Basic Operation
-
-1. Enter target words (comma-separated) in the input field
-2. Click "Generate" to create sentences
-3. Use visibility controls to show/hide specific words
-4. Copy sentences with the "Copy" button
-5. Clear all content using "Delete All"
-
-### Advanced Features
-
-- **Bulk Operations**: Use "Show All" / "Hide All" for quick visibility changes
-- **Model Selection**: Choose different AI models for varied results
-- **Server Monitoring**: Check connection status anytime
 
 ## 💡 Best Practices
 
-- Input specific, clear words for better context
-- Experiment with different AI models
-- Ensure stable internet connection
-- Keep Ollama server running
-- Use commas to separate multiple words
-- Customize the prompt in `prompt.txt`, `{word}` is the placeholder for the target word
+- Customize the prompt in `LexiGenAssets/prompt.txt`, `{word}` is the placeholder for the target word
+
+## 📂 File Structure
+
+LexiGen now uses a dedicated `LexiGenAssets` folder for all external files:
+
+- `LexiGenAssets/` - The main assets directory
+  - `translations/` - Translation files (e.g., zh_CN.json)
+  - `prompt.txt` - Custom prompt template file
+  - `settings.json` - Application settings
+
+This structure separates application code from user data, making it easier to manage and backup your settings.
 
 ## ⚠️ Troubleshooting
 
@@ -84,21 +62,22 @@ LexiGen transforms vocabulary practice and language learning by automatically ge
 |-------|----------|
 | No sentence generation | Check if Ollama server is running |
 | Connection errors | Use 'Check Server' button |
-| Slow performance | Verify system resources |
+| Slow performance | Verify system resources or use a smaller model `qwen2.5:0.5b` |
 | Model errors | Confirm model installation |
+
+## 🤩 Fun Facts
+
+"Lexi" comes from "lexicon".
+
+I considered the name "FibGen" (**F**ill **I**n the **B**lank), however, because "fib" means lie, this name was deserted.
 
 ## 🤝 Contributing
 
-Contributions are welcome! Here's how you can help:
+Contributions are welcome! Here's how you can help under [GNU General Public License v3.0](LICENSE):
 
-- Report bugs
-- Suggest features
+- Report bugs in [Issues](https://github.com/gitmichaelqiu/LexiGen/issues)
+- Suggest features in [Issues](https://github.com/gitmichaelqiu/LexiGen/issues)
 - Submit pull requests
-- Improve documentation
-
-## 📄 License
-
-LexiGen is open source software licensed under the [GNU General Public License v3.0](LICENSE).
 
 ---
 
