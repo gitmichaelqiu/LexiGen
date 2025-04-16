@@ -76,7 +76,18 @@ LexiGen transforms vocabulary practice and language learning by automatically ge
 - Ensure stable internet connection
 - Keep Ollama server running
 - Use commas to separate multiple words
-- Customize the prompt in `prompt.txt`, `{word}` is the placeholder for the target word
+- Customize the prompt in `LexiGenAssets/prompt.txt`, `{word}` is the placeholder for the target word
+
+## 📂 File Structure
+
+LexiGen now uses a dedicated `LexiGenAssets` folder for all external files:
+
+- `LexiGenAssets/` - The main assets directory
+  - `translations/` - Translation files (e.g., zh_CN.json)
+  - `prompt.txt` - Custom prompt template file
+  - `settings.json` - Application settings
+
+This structure separates application code from user data, making it easier to manage and backup your settings.
 
 ## ⚠️ Troubleshooting
 

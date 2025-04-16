@@ -232,15 +232,49 @@ class MainWindow:
 
     def on_api_url_change(self, new_url):
         """Called when API URL is changed."""
+        # Update API service
         self.api_service.api_url = new_url
+        
+        # Save immediately to settings
         self.settings_service.set_setting("api_url", new_url)
-    
+        
+        # Check server status after URL change
+        self.root.after(100, lambda: self.api_service.check_server_status(show_message=False))
+        self.root.after(200, lambda: self.update_server_status_display())
+
     def on_model_change(self, new_model):
         """Called when model is changed."""
+        # Update API service
         self.api_service.model = new_model
+        
+        # Save immediately to settings
         self.settings_service.set_setting("model", new_model)
+
+    def update_server_status_display(self):
+        """Update the server status display to reflect current state."""
+        if self.api_service.server_connected:
+            self.settings_panel.status_label.config(
+                text=get_translation(self.language, "server_status_connected"),
+                foreground="green"
+            )
+        else:
+            self.settings_panel.status_label.config(
+                text=get_translation(self.language, "server_status_not_connected"),
+                foreground="red"
+            )
     
     def on_close(self):
-        """Save settings before closing the application."""
+        """Save all current settings before closing the application."""
+        # Ensure we save the most up-to-date settings
+        current_settings = {
+            "language": self.language,
+            "api_url": self.api_service.api_url,
+            "model": self.api_service.model
+        }
+        
+        # Update all settings at once
+        self.settings_service.update_settings(current_settings)
+        
+        # Final save
         self.settings_service.save_settings()
         self.root.destroy()
