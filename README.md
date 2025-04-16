@@ -68,7 +68,7 @@ This structure separates application code from user data, making it easier to ma
 
 "Lexi" comes from "lexicon".
 
-I considered the name "FibGen" (**F**ill **I**n the **B**lank), however, because "fib" means lie, this name was deserted.
+I considered the name "FibGen" (**F**ill **I**n the **B**lank). However, because "fib" means lie, this name was discarded.
 
 ## 🤝 Contributing
 
