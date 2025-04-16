@@ -3,13 +3,11 @@
 block_cipher = None
 
 a = Analysis(
-    ['lexigen.py'],
+    ['main.py'],
     pathex=[],
     binaries=[],
     datas=[
         ('icons/Lexi.png', '.'),
-        ('prompt.txt', '.'),
-        ('translations/*.json', 'translations'),
         ('icons/Lexi.ico', 'icons'),
     ],
     hiddenimports=[
