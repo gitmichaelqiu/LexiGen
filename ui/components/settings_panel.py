@@ -73,10 +73,20 @@ class SettingsPanel(ttk.LabelFrame):
         self.language_change_callback(new_language)
     
     def _on_api_url_change(self, *args):
+        """Handle API URL changes and notify parent."""
         self.api_service.api_url = self.api_url_var.get()
+        
+        # Notify parent window if available
+        if hasattr(self.master, 'master') and hasattr(self.master.master, 'on_api_url_change'):
+            self.master.master.on_api_url_change(self.api_url_var.get())
     
     def _on_model_change(self, *args):
+        """Handle model changes and notify parent."""
         self.api_service.model = self.model_var.get()
+        
+        # Notify parent window if available
+        if hasattr(self.master, 'master') and hasattr(self.master.master, 'on_model_change'):
+            self.master.master.on_model_change(self.model_var.get())
     
     def check_server_status(self):
         if self.api_service.check_server_status():

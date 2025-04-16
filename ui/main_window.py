@@ -6,6 +6,7 @@ from models.word_processor import WordProcessor
 from services.api_service import APIService
 from services.document_service import DocumentService
 from services.update_service import UpdateService
+from services.settings_service import SettingsService
 from ui.components.sentence_widget import SentenceWidgetManager
 from ui.components.settings_panel import SettingsPanel
 import os
@@ -17,10 +18,21 @@ class MainWindow:
         self.root.title(f"LexiGen v{VERSION} - Fill-in-the-Blank Generator")
         self.root.geometry("1100x800")
         
-        # Initialize services
-        self.language = DEFAULT_CONFIG["language"]
+        # Initialize settings service
+        self.settings_service = SettingsService()
+        
+        # Initialize services with settings from service
+        self.language = self.settings_service.get_setting("language", DEFAULT_CONFIG["language"])
         self.word_processor = WordProcessor(self.language)
-        self.api_service = APIService(self.language)
+        
+        # Get API URL from settings
+        api_url = self.settings_service.get_setting("api_url", DEFAULT_CONFIG["api_url"])
+        self.api_service = APIService(self.language, api_url)
+        
+        # Get model from settings
+        model = self.settings_service.get_setting("model", DEFAULT_CONFIG["model"])
+        self.api_service.model = model
+        
         self.document_service = DocumentService(self.language)
         self.update_service = UpdateService(self.language)
         
@@ -32,6 +44,9 @@ class MainWindow:
         
         # Immediately check server status (not waiting for the scheduled checks)
         self.api_service.check_server_status(show_message=False)
+        
+        # Setup close handler to save settings
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         
         # Initial setup (scheduled to run after UI is ready)
         self.root.after(100, self.initial_setup)
@@ -70,8 +85,9 @@ class MainWindow:
         self.append_btn = ttk.Button(buttons_frame, text=get_translation(self.language, "append"), 
                                    command=lambda: self.generate_sentences(append=True))
         
-        # Initially only show generate button
+        # Initially only show generate button and ensure append is disabled
         self.generate_btn.pack(side=tk.LEFT)
+        self.append_btn.configure(state="disabled")  # Explicitly disable the append button
         self.append_btn.pack_forget()
         
         # Progress Bar
@@ -108,8 +124,17 @@ class MainWindow:
             self.api_service.fetch_models()
             self.settings_panel.update_model_list(self.api_service.available_models)
             
-            # Show append button after successful server connection
-            self.append_btn.pack(side=tk.LEFT, padx=(5, 0))
+            # Check if we have sentences before enabling the append button
+            has_sentences = len(self.sentence_manager.sentence_widgets) > 0
+            if has_sentences:
+                self.append_btn.pack(side=tk.LEFT, padx=(5, 0))
+                self.append_btn.configure(state="normal")
+            else:
+                # Make sure append button is disabled
+                self.append_btn.configure(state="disabled")
+        else:
+            # Make sure append button is disabled when server is not connected
+            self.append_btn.configure(state="disabled")
         
         # Always update the status display, regardless of connection state
         if server_connected:
@@ -130,6 +155,9 @@ class MainWindow:
         self.update_service.language = new_language
         self.word_processor.language = new_language
         self.update_ui_texts()
+        
+        # Save language setting
+        self.settings_service.set_setting("language", new_language)
     
     def update_ui_texts(self):
         self.input_frame.configure(text=get_translation(self.language, "input_words"))
@@ -201,3 +229,18 @@ class MainWindow:
                     self.append_btn.pack(side=tk.LEFT, padx=(5, 0))
             else:
                 self.append_btn.configure(state="disabled")
+
+    def on_api_url_change(self, new_url):
+        """Called when API URL is changed."""
+        self.api_service.api_url = new_url
+        self.settings_service.set_setting("api_url", new_url)
+    
+    def on_model_change(self, new_model):
+        """Called when model is changed."""
+        self.api_service.model = new_model
+        self.settings_service.set_setting("model", new_model)
+    
+    def on_close(self):
+        """Save settings before closing the application."""
+        self.settings_service.save_settings()
+        self.root.destroy()

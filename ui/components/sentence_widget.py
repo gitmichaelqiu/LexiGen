@@ -305,24 +305,23 @@ class SentenceWidgetManager(ttk.LabelFrame):
             if frame.winfo_exists():
                 text_widget = frame.text_widget
                 
-                # Extract words from the text widget
-                if hasattr(text_widget, 'original_word'):
-                    # Use the stored original word (the word used to generate the sentence)
+                # Extract the blanked words from the sentence
+                original = text_widget.original_sentence
+                masked = text_widget.masked_sentence
+                
+                # Find all blanks and their answers using improved algorithm
+                words = self._extract_blanked_words_improved(original, masked)
+                
+                if words:
                     para = doc.add_paragraph()
                     para.add_run(f"{i}. ").bold = True
-                    para.add_run(text_widget.original_word)
+                    para.add_run(", ".join(words))
                 else:
-                    # Fallback to extracting words from the sentence
-                    original = text_widget.original_sentence
-                    masked = text_widget.masked_sentence
-                    
-                    # Find all blanks and their answers
-                    words = self._extract_blanked_words(original, masked)
-                    
-                    if words:
+                    # Fallback to using the original word if no blanks found
+                    if hasattr(text_widget, 'original_word'):
                         para = doc.add_paragraph()
                         para.add_run(f"{i}. ").bold = True
-                        para.add_run(", ".join(words))
+                        para.add_run(text_widget.original_word)
         
         # Save the document
         try:
@@ -337,45 +336,66 @@ class SentenceWidgetManager(ttk.LabelFrame):
                 get_translation(self.language, "unexpected_error_msg").format(error=str(e))
             )
 
-    def _extract_blanked_words(self, original, masked):
-        """Extract words that have been blanked out in the masked sentence."""
-        blanked_words = []
+    def _extract_blanked_words_improved(self, original, masked):
+        """
+        Extract words that have been blanked out in the masked sentence.
+        More accurate than the previous method.
+        """
+        blank_answers = []
         
         # If there's no underscore in the masked sentence, there are no blanks
         if '_' not in masked:
             return []
         
-        # Find all underscored patterns in the masked sentence
+        # First, identify indices where blanks appear
+        orig_words = original.split()
+        mask_words = masked.split()
+        
+        # Make sure the sentences have the same word count
+        if len(orig_words) != len(mask_words):
+            # Different word count indicates mismatch, fall back to advanced parsing
+            return self._extract_blanks_by_pattern(original, masked)
+        
+        # Compare words at the same positions
+        for i, (orig_word, mask_word) in enumerate(zip(orig_words, mask_words)):
+            clean_orig = orig_word.strip('.,!?;:"\'()')
+            clean_mask = mask_word.strip('.,!?;:"\'()')
+            
+            # Check if this is a blanked word (has underscores)
+            if '_' in clean_mask:
+                # Extract the original word without punctuation
+                if clean_orig not in blank_answers:
+                    blank_answers.append(clean_orig)
+        
+        # If we didn't find any blanks with the direct approach, try advanced pattern matching
+        if not blank_answers:
+            return self._extract_blanks_by_pattern(original, masked)
+        
+        return blank_answers
+
+    def _extract_blanks_by_pattern(self, original, masked):
+        """Extract blanks using pattern matching for more complex cases."""
+        blank_answers = []
+        
+        # Find all masks (patterns of first letter followed by underscores)
         mask_patterns = []
-        words = masked.split()
-        for word in words:
-            if '_' in word:
-                # Clean the word of punctuation
+        for word in masked.split():
+            clean_word = word.strip('.,!?;:"\'()')
+            if len(clean_word) > 1 and '_' in clean_word:
+                # Get the pattern of the masked word
+                mask_patterns.append((clean_word, len(clean_word), clean_word[0].lower()))
+        
+        # For each mask pattern, find the corresponding word in the original
+        for mask, length, first_letter in mask_patterns:
+            for word in original.split():
                 clean_word = word.strip('.,!?;:"\'()')
-                if clean_word and '_' in clean_word:
-                    mask_patterns.append(clean_word)
+                if (len(clean_word) == length and
+                    clean_word[0].lower() == first_letter and
+                    clean_word.lower() not in [w.lower() for w in blank_answers]):
+                    blank_answers.append(clean_word)
+                    break
         
-        # For each mask pattern, find the corresponding original word
-        for mask in mask_patterns:
-            # The mask pattern is typically first letter + underscores
-            if len(mask) > 1 and '_' in mask:
-                prefix = mask[0]
-                length = len(mask)
-                
-                # Look for words in the original sentence that match this pattern
-                for orig_word in original.split():
-                    # Clean the original word
-                    clean_orig = orig_word.strip('.,!?;:"\'()')
-                    
-                    # Check if this could be our word
-                    if (len(clean_orig) == length and 
-                        clean_orig[0].lower() == prefix.lower() and
-                        clean_orig.lower() not in [w.lower() for w in blanked_words]):
-                        
-                        blanked_words.append(clean_orig)
-                        break
-        
-        return blanked_words
+        return blank_answers
 
     def show_all_words(self):
         """Show or hide all words in all sentences."""
