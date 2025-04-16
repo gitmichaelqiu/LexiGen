@@ -104,11 +104,14 @@ class SentenceWidgetManager(ttk.LabelFrame):
         )
         copy_btn.grid(row=0, column=2, padx=(0, 5))
         
+        # Store original word for regeneration
+        original_word = word
+        
         regen_btn = ttk.Button(
             frame,
             text="↻",
             width=2,
-            command=lambda: self._regenerate_sentence(word, frame)
+            command=lambda w=original_word, f=frame: self._regenerate_sentence(w, f)
         )
         regen_btn.grid(row=0, column=3, padx=(0, 5))
         
@@ -125,6 +128,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
         text_widget.masked_sentence = masked_sentence
         text_widget.word_visible = False
         text_widget.show_button = show_btn
+        text_widget.original_word = original_word  # Store original word
         frame.text_widget = text_widget
         
         self.sentence_widgets.append(frame)
@@ -290,6 +294,13 @@ class SentenceWidgetManager(ttk.LabelFrame):
             widget.destroy()
         self.sentence_widgets.clear()
         self._update_buttons_state()
+        
+        # Reset canvas scroll region
+        self.canvas.configure(scrollregion=(0, 0, 0, 0))
+        
+        # Clear any background that might remain
+        self.update_idletasks()  # Ensure all pending drawing operations are completed
+        self.canvas.update()
 
     def _copy_sentence(self, text_widget):
         """Copy sentence to clipboard."""
@@ -313,8 +324,44 @@ class SentenceWidgetManager(ttk.LabelFrame):
 
     def _regenerate_sentence(self, word, frame):
         """Regenerate sentence for a word."""
-        # Implement sentence regeneration logic here
-        pass
+        if not self.api_service.server_connected:
+            messagebox.showwarning(
+                get_translation(self.language, "server_error_title"),
+                get_translation(self.language, "server_connection_guide")
+            )
+            return
+        
+        # Get prompt from main application config
+        from models.config import DEFAULT_CONFIG
+        
+        # Generate new sentence
+        new_sentence = self.api_service.generate_sentence(word, DEFAULT_CONFIG["default_prompt"])
+        
+        if new_sentence:
+            # Create masked sentence
+            masked_sentence = self._create_masked_sentence(word, new_sentence)
+            
+            # Update text widget
+            text_widget = frame.text_widget
+            text_widget.configure(state="normal")
+            text_widget.delete("1.0", tk.END)
+            
+            # Set the appropriate sentence based on visibility state
+            if text_widget.word_visible:
+                text_widget.insert("1.0", new_sentence)
+            else:
+                text_widget.insert("1.0", masked_sentence)
+            
+            # Update stored sentences
+            text_widget.original_sentence = new_sentence
+            text_widget.masked_sentence = masked_sentence
+            
+            # Readjust height
+            text_widget.see("end")
+            num_lines = text_widget.count("1.0", "end", "displaylines")[0]
+            text_widget.configure(height=max(2, num_lines))
+            
+            text_widget.configure(state="disabled")
 
     def update_texts(self, language):
         """Update all texts in the widget after language change."""

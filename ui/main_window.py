@@ -96,9 +96,22 @@ class MainWindow:
         self.main_container.rowconfigure(2, weight=1)
         
     def initial_setup(self):
-        if self.api_service.check_server_status(show_message=False):
+        # Automatically check server status when the app starts
+        server_connected = self.api_service.check_server_status(show_message=False)
+        
+        # If server is connected, fetch available models
+        if server_connected:
             self.api_service.fetch_models()
             self.settings_panel.update_model_list(self.api_service.available_models)
+            
+            # Show append button after successful server connection
+            self.append_btn.pack(side=tk.LEFT, padx=(5, 0))
+        else:
+            # Update UI to show server not connected
+            self.settings_panel.status_label.config(
+                text=get_translation(self.language, "server_status_not_connected"),
+                foreground="red"
+            )
     
     def on_language_change(self, new_language):
         self.language = new_language
@@ -139,10 +152,13 @@ class MainWindow:
         
         self.root.update()
         
+        sentences_generated = 0
+        
         for i, word in enumerate(words):
             sentence = self.api_service.generate_sentence(word, DEFAULT_CONFIG["default_prompt"])
             if sentence:
                 self.sentence_manager.add_sentence(word, sentence)
+                sentences_generated += 1
             else:
                 self.progress_frame.grid_remove()
                 return
@@ -154,8 +170,12 @@ class MainWindow:
         self.progress_frame.grid_remove()
         if self.api_service.server_connected:
             self.generate_btn.configure(state="normal")
-            if hasattr(self, 'append_btn'):
-                self.append_btn.configure(state="normal")
+            
+            # Show append button after successful generation
+            if sentences_generated > 0:
+                if hasattr(self, 'append_btn'):
+                    self.append_btn.pack(side=tk.LEFT, padx=(5, 0))
+                    self.append_btn.configure(state="normal")
     
     def check_for_updates(self, show_message=True):
         result = self.update_service.check_for_updates(show_message)
