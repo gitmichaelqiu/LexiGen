@@ -181,8 +181,11 @@ class MainWindow:
             self.sentence_manager.clear_sentences()
             
         self.word_input.delete("1.0", tk.END)
-        self.progress_bar['maximum'] = len(words)
+        
+        # Reset progress bar and label
         self.progress_bar['value'] = 0
+        self.progress_bar['maximum'] = len(words)
+        self.progress_label.configure(text=get_translation(self.language, "generating"))
         self.progress_frame.grid()
         self.generate_btn.configure(state="disabled")
         
