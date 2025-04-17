@@ -4,11 +4,12 @@ from models.translations import get_translation
 from models.config import VERSION
 
 class SettingsPanel(ttk.LabelFrame):
-    def __init__(self, parent, language, available_languages, api_service, language_change_callback):
+    def __init__(self, parent, language, available_languages, api_service, language_change_callback, main_window):
         super().__init__(parent, text=get_translation(language, "settings"), padding="5")
         self.language = language
         self.api_service = api_service
         self.language_change_callback = language_change_callback
+        self.main_window = main_window
         
         # Version Label
         self.version_label = ttk.Label(self, text=f"v{VERSION}", foreground="gray")
@@ -62,7 +63,8 @@ class SettingsPanel(ttk.LabelFrame):
                                   command=self.open_help)
         self.help_btn.pack(side=tk.LEFT, padx=5)
         
-        self.update_btn = ttk.Button(self.buttons_row, text=get_translation(language, "check_updates"))
+        self.update_btn = ttk.Button(self.buttons_row, text=get_translation(language, "check_updates"),
+                                   command=lambda: self.main_window.check_for_updates(show_message=True))
         
         # Bind API URL and model changes
         self.api_url_var.trace_add('write', self._on_api_url_change)

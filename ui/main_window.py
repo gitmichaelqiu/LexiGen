@@ -50,7 +50,7 @@ class MainWindow:
         
         # Initial setup (scheduled to run after UI is ready)
         self.root.after(100, self.initial_setup)
-        self.root.after(200, lambda: self.check_for_updates(show_message=False))
+        self.root.after(200, lambda: self.check_for_updates(show_message=True))
         
     def setup_ui(self):
         self.main_container = ttk.Frame(self.root, padding="10")
@@ -62,7 +62,8 @@ class MainWindow:
             self.language,
             self.available_languages,
             self.api_service,
-            self.on_language_change
+            self.on_language_change,
+            self
         )
         self.settings_panel.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
         
