@@ -6,6 +6,7 @@ from docx import Document
 from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 import platform
+from nltk import word_tokenize
 
 class SentenceWidgetManager(ttk.LabelFrame):
     def __init__(self, parent, language, word_processor, api_service, on_sentences_changed=None):
@@ -197,30 +198,29 @@ class SentenceWidgetManager(ttk.LabelFrame):
         return frame
     
     def _create_masked_sentence(self, word, sentence):
-        def create_mask(w):
-            return w[0] + "_" * (len(w) - 1)
+        """Create a masked sentence by identifying and masking the target word."""
+        # Get the base form of the input word
+        target_word = self.word_processor.restore_word(word)
         
-        word_forms = {w.lower() for w in self.word_processor.get_word_variations(word)}
-        sentence_lower = sentence.lower()
+        # Tokenize the sentence
+        words = word_tokenize(sentence)
         masked_words = {}
         
-        for form in sorted(word_forms, key=len, reverse=True):
-            index = 0
-            while True:
-                index = sentence_lower.find(form, index)
-                if index == -1:
-                    break
-                    
-                before = index == 0 or not sentence_lower[index-1].isalpha()
-                after = index + len(form) == len(sentence_lower) or not sentence_lower[index + len(form)].isalpha()
+        # Process each word in the sentence
+        for original_word in words:
+            # Skip non-alphabetic words
+            if not original_word.isalpha():
+                continue
                 
-                if before and after:
-                    original_word = sentence[index:index + len(form)]
-                    masked_word = create_mask(original_word)
-                    masked_words[original_word] = masked_word
-                
-                index += len(form)
+            # Restore the word to its base form
+            restored_word = self.word_processor.restore_word(original_word)
+            
+            # If the restored word matches our target word, mask it
+            if restored_word == target_word:
+                masked_word = original_word[0] + '_' * (len(original_word) - 1)
+                masked_words[original_word] = masked_word
         
+        # Create the masked sentence
         masked_sentence = sentence
         for original, masked in sorted(masked_words.items(), key=lambda x: len(x[0]), reverse=True):
             masked_sentence = masked_sentence.replace(original, masked)
