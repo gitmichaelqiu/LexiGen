@@ -76,6 +76,7 @@ Contributions are welcome! Here's how you can help under [GNU General Public Lic
 
 - Report bugs in [Issues](https://github.com/gitmichaelqiu/LexiGen/issues)
 - Suggest features in [Issues](https://github.com/gitmichaelqiu/LexiGen/issues)
+- Post your POV to this project in [Discussions](https://github.com/gitmichaelqiu/LexiGen/discussions)
 - Submit pull requests
 
 ---
