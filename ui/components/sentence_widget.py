@@ -200,7 +200,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
     def _create_masked_sentence(self, word, sentence):
         """Create a masked sentence by identifying and masking the target word."""
         # Get the base form of the input word
-        target_word = self.word_processor.restore_word(word)
+        target_word = word.lower()
         
         # Tokenize the sentence
         words = word_tokenize(sentence)
@@ -211,12 +211,9 @@ class SentenceWidgetManager(ttk.LabelFrame):
             # Skip non-alphabetic words
             if not original_word.isalpha():
                 continue
-                
-            # Restore the word to its base form
-            restored_word = self.word_processor.restore_word(original_word)
             
-            # If the restored word matches our target word, mask it
-            if restored_word == target_word:
+            # Check if the word matches the target word or its variations
+            if self.word_processor.is_word_match(original_word, target_word):
                 masked_word = original_word[0] + '_' * (len(original_word) - 1)
                 masked_words[original_word] = masked_word
         
