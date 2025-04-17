@@ -39,6 +39,7 @@ class WordProcessor:
                    "R": wordnet.ADV}
         return tag_dict.get(tag, wordnet.NOUN)
 
+
     def restore_word(self, word):
         """Restore a word to its base form using NLTK's lemmatizer with POS information."""
         if not self.lemmatizer:
@@ -46,4 +47,44 @@ class WordProcessor:
             
         word = word.lower()
         pos = self.get_wordnet_pos(word)
-        return self.lemmatizer.lemmatize(word, pos)
+        
+        # First try lemmatization
+        lemma = self.lemmatizer.lemmatize(word, pos)
+        
+        return lemma
+
+    def is_word_match(self, word1, word2):
+        """Check if two words match, considering their base forms and word families."""
+        if not self.lemmatizer:
+            return word1.lower() == word2.lower()
+            
+        word1 = word1.lower()
+        word2 = word2.lower()
+        
+        # Direct match
+        if word1 == word2:
+            return True
+            
+        # Get base forms
+        base1 = self.restore_word(word1)
+        base2 = self.restore_word(word2)
+        
+        # Check base form match
+        if base1 == base2:
+            return True
+            
+        # Check for morphological variations
+        if word1.endswith('ic') and word2 == word1[:-2] + 'y':
+            return True
+        if word2.endswith('ic') and word1 == word2[:-2] + 'y':
+            return True
+        if word1.endswith('ious') and word2 == word1[:-4] + 'y':
+            return True
+        if word2.endswith('ious') and word1 == word2[:-4] + 'y':
+            return True
+        if word1.endswith('al') and word2 == word1[:-2]:
+            return True
+        if word2.endswith('al') and word1 == word2[:-2]:
+            return True
+            
+        return False
