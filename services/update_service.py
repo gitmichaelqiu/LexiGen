@@ -24,11 +24,6 @@ class UpdateService:
                         webbrowser.open("https://github.com/gitmichaelqiu/LexiGen/releases/latest")
                     return "new_version"
                 else:
-                    if show_message:
-                        messagebox.showinfo(
-                            get_translation(self.language, "no_updates_title"),
-                            get_translation(self.language, "no_updates_msg").format(version=VERSION)
-                        )
                     return "up_to_date"
             else:
                 if show_message:
