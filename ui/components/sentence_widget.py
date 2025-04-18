@@ -172,13 +172,14 @@ class SentenceWidgetManager(ttk.LabelFrame):
         )
         regen_btn.pack(side=tk.LEFT, padx=(0, 2))
         
-        delete_btn = ttk.Button(
+        # Create menu button
+        menu_btn = ttk.Button(
             buttons_frame,
-            text="×",
+            text="⋮",
             width=2,
-            command=lambda: self._delete_sentence(frame)
+            command=lambda f=frame: self._show_menu(f)
         )
-        delete_btn.pack(side=tk.LEFT)
+        menu_btn.pack(side=tk.LEFT)
         
         # Store references
         text_widget.original_sentence = sentence
@@ -187,6 +188,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
         text_widget.show_button = show_btn
         text_widget.original_word = original_word  # Store original word
         frame.text_widget = text_widget
+        frame.menu_btn = menu_btn  # Store menu button reference
         
         self.sentence_widgets.append(frame)
         self._update_buttons_state()
@@ -609,3 +611,64 @@ class SentenceWidgetManager(ttk.LabelFrame):
                         current_text = child.cget("text")
                         if current_text in ["Copy", "复制", get_translation(self.language, "copy")]:
                             child.configure(text=get_translation(language, "copy"))
+
+    def _show_menu(self, frame):
+        """Show the menu for a sentence frame."""
+        # Create menu
+        menu = tk.Menu(self, tearoff=0)
+        
+        # Add menu items
+        menu.add_command(
+            label=get_translation(self.language, "move_up"),
+            command=lambda: self._move_sentence(frame, -1)
+        )
+        menu.add_command(
+            label=get_translation(self.language, "move_down"),
+            command=lambda: self._move_sentence(frame, 1)
+        )
+        menu.add_separator()
+        menu.add_command(
+            label=get_translation(self.language, "delete"),
+            command=lambda: self._delete_sentence(frame)
+        )
+        
+        # Get button position
+        btn = frame.menu_btn
+        x = btn.winfo_rootx()
+        y = btn.winfo_rooty() + btn.winfo_height()
+        
+        # Show menu and bind to close on click outside
+        menu.post(x, y)
+        menu.bind("<Unmap>", lambda e: menu.destroy())
+        
+        # Bind to close on any click
+        def close_menu(e):
+            menu.destroy()
+            self.unbind("<Button-1>")
+        
+        self.bind("<Button-1>", close_menu)
+
+    def _move_sentence(self, frame, direction):
+        """Move a sentence up or down in the list."""
+        if not frame in self.sentence_widgets:
+            return
+            
+        current_index = self.sentence_widgets.index(frame)
+        new_index = current_index + direction
+        
+        # Check if move is valid
+        if 0 <= new_index < len(self.sentence_widgets):
+            # Remove from current position
+            self.sentence_widgets.pop(current_index)
+            # Insert at new position
+            self.sentence_widgets.insert(new_index, frame)
+            
+            # Update grid positions
+            for i, widget in enumerate(self.sentence_widgets):
+                widget.grid(row=i)
+            
+            # Update canvas scroll region
+            self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+            
+            # Force update to ensure proper display
+            self.update_idletasks()
