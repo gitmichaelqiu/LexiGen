@@ -7,6 +7,8 @@ from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 import platform
 from nltk import word_tokenize
+import markdown
+import re
 
 class SentenceWidgetManager(ttk.LabelFrame):
     def __init__(self, parent, language, word_processor, api_service, on_sentences_changed=None):
@@ -101,7 +103,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
     def _on_canvas_configure(self, event):
         """Resize the inner frame to match the canvas."""
         self.canvas.itemconfig(self.canvas_frame, width=event.width)
-        
+    
     def _on_mousewheel(self, event):
         """Legacy method, replaced by platform-specific methods."""
         pass
@@ -222,7 +224,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
             # Check if the word matches the target word or its variations
             if self.word_processor.is_word_match(original_word, target_word):
                 masked_word = original_word[0] + '_' * (len(original_word) - 1)
-                masked_words[original_word] = masked_word
+                    masked_words[original_word] = masked_word
         
         # Create the masked sentence
         masked_sentence = sentence
@@ -725,6 +727,9 @@ class AnalysisWindow(tk.Toplevel):
         self.text_widget = text_widget
         self.analysis = None
         
+        # Bind to window close event
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
+        
         # Create main frame
         main_frame = ttk.Frame(self, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
@@ -737,7 +742,7 @@ class AnalysisWindow(tk.Toplevel):
         ttk.Label(word_frame, text=f"{get_translation(language, 'sentence')}: {sentence}").pack(side=tk.LEFT, padx=(20, 0))
         
         # Analysis text widget
-        self.analysis_text = tk.Text(main_frame, wrap=tk.WORD, height=15)
+        self.analysis_text = tk.Text(main_frame, wrap=tk.WORD, height=15, state="disabled")
         self.analysis_text.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
         
         # Buttons frame
@@ -758,8 +763,23 @@ class AnalysisWindow(tk.Toplevel):
         )
         close_btn.pack(side=tk.RIGHT)
         
-        # Generate initial analysis
-        self._generate_analysis()
+        # Check for existing analysis
+        if hasattr(text_widget, 'analysis') and text_widget.analysis:
+            self.analysis = text_widget.analysis
+            self._display_analysis()
+        else:
+            self._generate_analysis()
+    
+    def _display_analysis(self):
+        """Display the analysis in the text widget with markdown formatting."""
+        if not self.analysis:
+            return
+            
+        # Display the text directly
+        self.analysis_text.configure(state="normal")
+        self.analysis_text.delete("1.0", tk.END)
+        self.analysis_text.insert("1.0", self.analysis)
+        self.analysis_text.configure(state="disabled")
     
     def _generate_analysis(self):
         """Generate analysis for the word in the sentence."""
@@ -773,13 +793,21 @@ class AnalysisWindow(tk.Toplevel):
         # Get prompt from main application config
         from models.config import DEFAULT_CONFIG
         
-        # Generate analysis
-        prompt = f"Analyze why the word '{self.word}' should be used in this sentence: '{self.sentence}'. Consider its meaning, tense, and grammar. Provide a detailed explanation."
+        # Generate analysis with improved prompt
+        prompt = f"""Analyze the grammatical usage of '{self.word}' in this sentence: '{self.sentence}'
+Focus on:
+1. Tense (e.g., Present Simple, Past Perfect)
+2. Voice (Active/Passive)
+3. Mood (Indicative/Subjunctive)
+4. Function (e.g., Subject, Object, Modifier)
+
+Keep the analysis concise and technical. Example format:
+"Present Simple, Active Voice. Functions as the subject of the sentence." """
+        
         self.analysis = self.api_service.generate_sentence(self.word, prompt)
         
         if self.analysis:
-            self.analysis_text.delete("1.0", tk.END)
-            self.analysis_text.insert("1.0", self.analysis)
+            self._display_analysis()
         else:
             messagebox.showerror(
                 get_translation(self.language, "error_title"),
