@@ -514,6 +514,10 @@ class SentenceWidgetManager(ttk.LabelFrame):
         frame.destroy()
         self._update_buttons_state()
         
+        # Renumber remaining sentences
+        for i, widget in enumerate(self.sentence_widgets):
+            widget.order_label.configure(text=f"{i + 1}.")
+        
         # Notify about sentence change
         if self.on_sentences_changed:
             self.on_sentences_changed(len(self.sentence_widgets) > 0)
