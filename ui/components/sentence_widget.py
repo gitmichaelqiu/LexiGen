@@ -263,6 +263,12 @@ class SentenceWidgetManager(ttk.LabelFrame):
         if not title:
             return
         
+        # Ask if user wants to include analysis
+        include_analysis = messagebox.askyesno(
+            get_translation(self.language, "include_analysis_title"),
+            get_translation(self.language, "include_analysis_prompt")
+        )
+        
         # Ask for save location
         file_path = filedialog.asksaveasfilename(
             defaultextension=".docx",
@@ -304,7 +310,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
         answer_title_run.bold = True
         answer_title_run.font.size = Pt(14)
         
-        # Extract and list all blanked words
+        # Extract and list all blanked words with analysis if available
         for i, frame in enumerate(self.sentence_widgets, 1):
             if frame.winfo_exists():
                 text_widget = frame.text_widget
@@ -319,13 +325,21 @@ class SentenceWidgetManager(ttk.LabelFrame):
                 if words:
                     para = doc.add_paragraph()
                     para.add_run(f"{i}. ").bold = True
-                    para.add_run(", ".join(words))
+                    
+                    # Add word and analysis if available
+                    if include_analysis and hasattr(text_widget, 'analysis') and text_widget.analysis:
+                        para.add_run(f"{words[0]}; *{text_widget.analysis}*")
+                    else:
+                        para.add_run(", ".join(words))
                 else:
                     # Fallback to using the original word if no blanks found
                     if hasattr(text_widget, 'original_word'):
                         para = doc.add_paragraph()
                         para.add_run(f"{i}. ").bold = True
-                        para.add_run(text_widget.original_word)
+                        if include_analysis and hasattr(text_widget, 'analysis') and text_widget.analysis:
+                            para.add_run(f"{text_widget.original_word}; *{text_widget.analysis}*")
+                        else:
+                            para.add_run(text_widget.original_word)
         
         # Save the document
         try:
@@ -635,6 +649,10 @@ class SentenceWidgetManager(ttk.LabelFrame):
             label=get_translation(self.language, "move_down"),
             command=lambda: self._move_sentence(frame, 1)
         )
+        menu.add_command(
+            label=get_translation(self.language, "analyze"),
+            command=lambda: self._show_analysis(frame)
+        )
         menu.add_separator()
         menu.add_command(
             label=get_translation(self.language, "delete"),
@@ -678,3 +696,104 @@ class SentenceWidgetManager(ttk.LabelFrame):
             # Notify about sentence change
             if self.on_sentences_changed:
                 self.on_sentences_changed(len(self.sentence_widgets) > 0)
+
+    def _show_analysis(self, frame):
+        """Show analysis window for the sentence."""
+        text_widget = frame.text_widget
+        word = text_widget.original_word
+        sentence = text_widget.original_sentence
+        
+        # Create and show analysis window
+        AnalysisWindow(self, word, sentence, self.api_service, self.language, text_widget)
+
+class AnalysisWindow(tk.Toplevel):
+    def __init__(self, parent, word, sentence, api_service, language, text_widget):
+        super().__init__(parent)
+        self.title(get_translation(language, "word_analysis"))
+        self.geometry("600x400")
+        self.resizable(True, True)
+        
+        # Make window modal
+        self.transient(parent)
+        self.grab_set()
+        
+        # Store references
+        self.api_service = api_service
+        self.language = language
+        self.word = word
+        self.sentence = sentence
+        self.text_widget = text_widget
+        self.analysis = None
+        
+        # Create main frame
+        main_frame = ttk.Frame(self, padding="10")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Word and sentence display
+        word_frame = ttk.Frame(main_frame)
+        word_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(word_frame, text=f"{get_translation(language, 'word')}: {word}").pack(side=tk.LEFT)
+        ttk.Label(word_frame, text=f"{get_translation(language, 'sentence')}: {sentence}").pack(side=tk.LEFT, padx=(20, 0))
+        
+        # Analysis text widget
+        self.analysis_text = tk.Text(main_frame, wrap=tk.WORD, height=15)
+        self.analysis_text.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        
+        # Buttons frame
+        buttons_frame = ttk.Frame(main_frame)
+        buttons_frame.pack(fill=tk.X)
+        
+        self.regenerate_btn = ttk.Button(
+            buttons_frame,
+            text=get_translation(language, "regenerate_analysis"),
+            command=self._regenerate_analysis
+        )
+        self.regenerate_btn.pack(side=tk.LEFT)
+        
+        close_btn = ttk.Button(
+            buttons_frame,
+            text=get_translation(language, "close"),
+            command=self._on_close
+        )
+        close_btn.pack(side=tk.RIGHT)
+        
+        # Generate initial analysis
+        self._generate_analysis()
+    
+    def _generate_analysis(self):
+        """Generate analysis for the word in the sentence."""
+        if not self.api_service.server_connected:
+            messagebox.showwarning(
+                get_translation(self.language, "server_error_title"),
+                get_translation(self.language, "server_connection_guide")
+            )
+            return
+        
+        # Get prompt from main application config
+        from models.config import DEFAULT_CONFIG
+        
+        # Generate analysis
+        prompt = f"Analyze why the word '{self.word}' should be used in this sentence: '{self.sentence}'. Consider its meaning, tense, and grammar. Provide a detailed explanation."
+        self.analysis = self.api_service.generate_sentence(self.word, prompt)
+        
+        if self.analysis:
+            self.analysis_text.delete("1.0", tk.END)
+            self.analysis_text.insert("1.0", self.analysis)
+        else:
+            messagebox.showerror(
+                get_translation(self.language, "error_title"),
+                get_translation(self.language, "analysis_generation_failed")
+            )
+    
+    def _regenerate_analysis(self):
+        """Regenerate the analysis."""
+        self.regenerate_btn.configure(state="disabled")
+        self._generate_analysis()
+        self.regenerate_btn.configure(state="normal")
+    
+    def _on_close(self):
+        """Store analysis in text widget and close window."""
+        if self.analysis:
+            self.text_widget.analysis = self.analysis
+        self.destroy()
