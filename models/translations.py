@@ -71,7 +71,12 @@ TRANSLATIONS = {
         "sentence": "Sentence",
         "analyze": "Analyze",
         "close": "Close",
-        "generating_analyses": "Generating Analyses"
+        "generating_analyses": "Generating Analyses",
+        "edit": "Edit",
+        "edit_sentence": "Edit Sentence",
+        "edit_warning": "Editing the sentence will remove any existing analysis.",
+        "save": "Save",
+        "cancel": "Cancel"
     },
     "zh": {
         "settings": "设置",
@@ -140,7 +145,12 @@ TRANSLATIONS = {
         "sentence": "句子",
         "analyze": "分析",
         "close": "关闭",
-        "generating_analyses": "正在生成分析"
+        "generating_analyses": "正在生成分析",
+        "edit": "编辑",
+        "edit_sentence": "编辑句子",
+        "edit_warning": "编辑句子将删除现有分析。",
+        "save": "保存",
+        "cancel": "取消"
     }
 }
 

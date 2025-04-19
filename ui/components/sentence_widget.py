@@ -733,6 +733,10 @@ Keep the analysis concise and technical. Output in 1 line. Example format:
             label=get_translation(self.language, "analyze"),
             command=lambda: self._show_analysis(frame)
         )
+        menu.add_command(
+            label=get_translation(self.language, "edit"),
+            command=lambda: self._edit_sentence(frame)
+        )
         menu.add_separator()
         menu.add_command(
             label=get_translation(self.language, "delete"),
@@ -785,6 +789,15 @@ Keep the analysis concise and technical. Output in 1 line. Example format:
         
         # Create and show analysis window
         AnalysisWindow(self, word, sentence, self.api_service, self.language, text_widget)
+
+    def _edit_sentence(self, frame):
+        """Edit a sentence."""
+        text_widget = frame.text_widget
+        word = text_widget.original_word
+        sentence = text_widget.original_sentence
+        
+        # Create and show edit window
+        EditSentenceWindow(self, word, sentence, self.api_service, self.language, frame)
 
 class AnalysisWindow(tk.Toplevel):
     def __init__(self, parent, word, sentence, api_service, language, text_widget):
@@ -902,4 +915,108 @@ Keep the analysis concise and technical. Output in 1 line. Example format:
         """Store analysis in text widget and close window."""
         if self.analysis:
             self.text_widget.analysis = self.analysis
+        self.destroy()
+
+class EditSentenceWindow(tk.Toplevel):
+    def __init__(self, parent, word, sentence, api_service, language, frame):
+        super().__init__(parent)
+        self.title(get_translation(language, "edit_sentence"))
+        self.geometry("600x250")
+        self.resizable(True, True)
+        
+        # Make window modal
+        self.transient(parent)
+        self.grab_set()
+        
+        # Bind to window close event
+        self.protocol("WM_DELETE_WINDOW", self.destroy)
+        
+        # Store references
+        self.parent = parent
+        self.api_service = api_service
+        self.language = language
+        self.word = word
+        self.original_sentence = sentence
+        self.frame = frame
+        
+        # Create main frame
+        main_frame = ttk.Frame(self, padding="10")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Word display
+        word_frame = ttk.Frame(main_frame)
+        word_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(word_frame, text=f"{get_translation(language, 'word')}: {word}").pack(side=tk.LEFT)
+        
+        # Sentence editing
+        sentence_frame = ttk.Frame(main_frame)
+        sentence_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(sentence_frame, text=f"{get_translation(language, 'sentence')}:").pack(anchor=tk.W)
+        
+        # Sentence text widget
+        self.sentence_text = tk.Text(sentence_frame, wrap=tk.WORD, height=5)
+        self.sentence_text.insert("1.0", sentence)
+        self.sentence_text.pack(fill=tk.X, expand=True, pady=(5, 0))
+        
+        # Label with warning
+        warning_label = ttk.Label(main_frame, text=get_translation(language, "edit_warning"), foreground="red")
+        warning_label.pack(pady=(0, 10))
+        
+        # Buttons frame
+        buttons_frame = ttk.Frame(main_frame)
+        buttons_frame.pack(fill=tk.X)
+        
+        save_btn = ttk.Button(
+            buttons_frame,
+            text=get_translation(language, "save"),
+            command=self._save_changes
+        )
+        save_btn.pack(side=tk.LEFT)
+        
+        cancel_btn = ttk.Button(
+            buttons_frame,
+            text=get_translation(language, "cancel"),
+            command=self.destroy
+        )
+        cancel_btn.pack(side=tk.RIGHT)
+    
+    def _save_changes(self):
+        """Save the edited sentence."""
+        new_sentence = self.sentence_text.get("1.0", "end-1c").strip()
+        
+        # Don't do anything if the sentence is empty or unchanged
+        if not new_sentence or new_sentence == self.original_sentence:
+            self.destroy()
+            return
+        
+        # Update the sentence in the frame
+        text_widget = self.frame.text_widget
+        
+        # Update original sentence
+        text_widget.original_sentence = new_sentence
+        
+        # Create new masked sentence
+        text_widget.masked_sentence = self.parent._create_masked_sentence(self.word, new_sentence)
+        
+        # Update the display based on current visibility
+        text_widget.configure(state="normal")
+        text_widget.delete("1.0", tk.END)
+        
+        if hasattr(text_widget, 'word_visible') and text_widget.word_visible:
+            text_widget.insert("1.0", new_sentence)
+        else:
+            text_widget.insert("1.0", text_widget.masked_sentence)
+        
+        # Remove analysis if it exists as the sentence has changed
+        if hasattr(text_widget, 'analysis'):
+            delattr(text_widget, 'analysis')
+        
+        # Adjust height
+        text_widget.see("end")
+        num_lines = text_widget.count("1.0", "end", "displaylines")[0]
+        text_widget.configure(height=max(2, num_lines))
+        text_widget.configure(state="disabled")
+        
         self.destroy()
