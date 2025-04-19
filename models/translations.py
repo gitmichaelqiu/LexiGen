@@ -70,7 +70,8 @@ TRANSLATIONS = {
         "word": "Word",
         "sentence": "Sentence",
         "analyze": "Analyze",
-        "close": "Close"
+        "close": "Close",
+        "generating_analyses": "Generating Analyses"
     },
     "zh": {
         "settings": "设置",
@@ -138,7 +139,8 @@ TRANSLATIONS = {
         "word": "单词",
         "sentence": "句子",
         "analyze": "分析",
-        "close": "关闭"
+        "close": "关闭",
+        "generating_analyses": "正在生成分析"
     }
 }
 

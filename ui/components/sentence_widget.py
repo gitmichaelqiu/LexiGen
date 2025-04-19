@@ -271,6 +271,84 @@ class SentenceWidgetManager(ttk.LabelFrame):
             get_translation(self.language, "include_analysis_prompt")
         )
         
+        # If including analysis, check for missing analyses
+        if include_analysis:
+            # Count sentences without analysis
+            missing_analyses = [frame for frame in self.sentence_widgets 
+                               if not hasattr(frame.text_widget, 'analysis') or not frame.text_widget.analysis]
+            
+            # If there are missing analyses, generate them
+            if missing_analyses:
+                if not self.api_service.server_connected:
+                    messagebox.showwarning(
+                        get_translation(self.language, "server_error_title"),
+                        get_translation(self.language, "server_connection_guide")
+                    )
+                    # Continue without analyses
+                    include_analysis = False
+                else:
+                    # Create progress dialog
+                    progress_window = tk.Toplevel(self)
+                    progress_window.title(get_translation(self.language, "generating_analyses"))
+                    progress_window.geometry("400x100")
+                    progress_window.transient(self)
+                    progress_window.grab_set()
+                    progress_window.resizable(False, False)
+                    
+                    # Create progress frame
+                    progress_frame = ttk.Frame(progress_window, padding="10")
+                    progress_frame.pack(fill=tk.BOTH, expand=True)
+                    
+                    # Labels
+                    ttk.Label(progress_frame, text=get_translation(self.language, "generating_analyses")).pack(pady=(0, 5))
+                    progress_label = ttk.Label(progress_frame, text="0/{0}".format(len(missing_analyses)))
+                    progress_label.pack(pady=(0, 5))
+                    
+                    # Progress bar
+                    progress_var = tk.DoubleVar()
+                    progress_bar = ttk.Progressbar(progress_frame, variable=progress_var, maximum=100)
+                    progress_bar.pack(fill=tk.X, pady=(0, 10))
+                    
+                    # Update progress
+                    progress_window.update()
+                    
+                    # Generate analyses for all sentences
+                    prompt = """Analyze the grammatical usage of '{word}' in this sentence: '{sentence}'
+Focus on:
+1. Tense (e.g., Present Simple, Past Perfect)
+2. Voice (Active/Passive)
+3. Mood (Indicative/Subjunctive)
+4. Function (e.g., Subject, Object, Modifier)
+
+Keep the analysis concise and technical. Output in 1 line. Example format:
+"Present Simple, Active Voice. Functions as the subject of the sentence." """
+                    
+                    # Generate analyses one by one
+                    for i, frame in enumerate(missing_analyses):
+                        word = frame.text_widget.original_word
+                        sentence = frame.text_widget.original_sentence
+                        
+                        # Update progress
+                        progress_var.set((i / len(missing_analyses)) * 100)
+                        progress_label.configure(text="{0}/{1}".format(i, len(missing_analyses)))
+                        progress_window.update()
+                        
+                        # Generate analysis
+                        formatted_prompt = prompt.format(word=word, sentence=sentence)
+                        analysis = self.api_service.generate_sentence(word, formatted_prompt)
+                        
+                        # Store analysis
+                        if analysis:
+                            frame.text_widget.analysis = analysis
+                        
+                        # Update progress again
+                        progress_var.set(((i+1) / len(missing_analyses)) * 100)
+                        progress_label.configure(text="{0}/{1}".format(i+1, len(missing_analyses)))
+                        progress_window.update()
+                    
+                    # Close progress window
+                    progress_window.destroy()
+        
         # Ask for save location
         file_path = filedialog.asksaveasfilename(
             defaultextension=".docx",
