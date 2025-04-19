@@ -224,7 +224,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
             # Check if the word matches the target word or its variations
             if self.word_processor.is_word_match(original_word, target_word):
                 masked_word = original_word[0] + '_' * (len(original_word) - 1)
-                    masked_words[original_word] = masked_word
+                masked_words[original_word] = masked_word
         
         # Create the masked sentence
         masked_sentence = sentence
