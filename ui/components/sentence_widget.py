@@ -330,7 +330,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
                     
                     # Add word and analysis if available
                     if include_analysis and hasattr(text_widget, 'analysis') and text_widget.analysis:
-                        para.add_run(f"{words[0]}; *{text_widget.analysis}*")
+                        para.add_run(f"{words[0]}; [{text_widget.analysis}]")
                     else:
                         para.add_run(", ".join(words))
                 else:
@@ -339,7 +339,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
                         para = doc.add_paragraph()
                         para.add_run(f"{i}. ").bold = True
                         if include_analysis and hasattr(text_widget, 'analysis') and text_widget.analysis:
-                            para.add_run(f"{text_widget.original_word}; *{text_widget.analysis}*")
+                            para.add_run(f"{text_widget.original_word}; [{text_widget.analysis}]")
                         else:
                             para.add_run(text_widget.original_word)
         
@@ -801,7 +801,7 @@ Focus on:
 3. Mood (Indicative/Subjunctive)
 4. Function (e.g., Subject, Object, Modifier)
 
-Keep the analysis concise and technical. Example format:
+Keep the analysis concise and technical. Output in 1 line. Example format:
 "Present Simple, Active Voice. Functions as the subject of the sentence." """
         
         self.analysis = self.api_service.generate_sentence(self.word, prompt)
