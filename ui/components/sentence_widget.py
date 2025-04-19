@@ -817,6 +817,7 @@ class AnalysisWindow(tk.Toplevel):
         self.sentence = sentence
         self.text_widget = text_widget
         self.analysis = None
+        self.editing = False
         
         # Bind to window close event
         self.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -847,6 +848,13 @@ class AnalysisWindow(tk.Toplevel):
         )
         self.regenerate_btn.pack(side=tk.LEFT)
         
+        self.edit_btn = ttk.Button(
+            buttons_frame,
+            text=get_translation(language, "edit_analysis"),
+            command=self._toggle_edit_mode
+        )
+        self.edit_btn.pack(side=tk.LEFT, padx=(5, 0))
+        
         close_btn = ttk.Button(
             buttons_frame,
             text=get_translation(language, "close"),
@@ -860,6 +868,20 @@ class AnalysisWindow(tk.Toplevel):
             self._display_analysis()
         else:
             self._generate_analysis()
+    
+    def _toggle_edit_mode(self):
+        """Toggle between view and edit modes for the analysis text."""
+        if not self.editing:
+            # Switch to edit mode
+            self.analysis_text.configure(state="normal")
+            self.edit_btn.configure(text=get_translation(self.language, "save_analysis"))
+            self.editing = True
+        else:
+            # Switch back to view mode and save changes
+            self.analysis = self.analysis_text.get("1.0", "end-1c").strip()
+            self.analysis_text.configure(state="disabled")
+            self.edit_btn.configure(text=get_translation(self.language, "edit_analysis"))
+            self.editing = False
     
     def _display_analysis(self):
         """Display the analysis in the text widget with markdown formatting."""
@@ -908,11 +930,24 @@ Keep the analysis concise and technical. Output in 1 line. Example format:
     def _regenerate_analysis(self):
         """Regenerate the analysis."""
         self.regenerate_btn.configure(state="disabled")
+        self.edit_btn.configure(state="disabled")
+        
+        # Reset to view mode if currently editing
+        if self.editing:
+            self.editing = False
+            self.edit_btn.configure(text=get_translation(self.language, "edit_analysis"))
+        
         self._generate_analysis()
+        
         self.regenerate_btn.configure(state="normal")
+        self.edit_btn.configure(state="normal")
     
     def _on_close(self):
         """Store analysis in text widget and close window."""
+        # If in edit mode, save the current text
+        if self.editing:
+            self.analysis = self.analysis_text.get("1.0", "end-1c").strip()
+        
         if self.analysis:
             self.text_widget.analysis = self.analysis
         self.destroy()

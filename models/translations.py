@@ -76,7 +76,9 @@ TRANSLATIONS = {
         "edit_sentence": "Edit Sentence",
         "edit_warning": "Editing the sentence will remove any existing analysis.",
         "save": "Save",
-        "cancel": "Cancel"
+        "cancel": "Cancel",
+        "edit_analysis": "Edit Analysis",
+        "save_analysis": "Save Analysis"
     },
     "zh": {
         "settings": "设置",
@@ -150,7 +152,9 @@ TRANSLATIONS = {
         "edit_sentence": "编辑句子",
         "edit_warning": "编辑句子将删除现有分析。",
         "save": "保存",
-        "cancel": "取消"
+        "cancel": "取消",
+        "edit_analysis": "编辑分析",
+        "save_analysis": "保存分析"
     }
 }
 
