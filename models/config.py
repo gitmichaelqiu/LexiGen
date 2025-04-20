@@ -7,7 +7,7 @@ VERSION = "1.4.0"
 # Default configuration
 DEFAULT_CONFIG = {
     "api_url": "http://127.0.0.1:11434/api/generate",
-    "model": "llama2",
+    "model": "qwen2.5:3b",
     "language": "English",
     "prompt_file": "prompt.txt",
     "default_prompt": "Create a simple sentence using the word '{word}'. The sentence should be clear and educational."
