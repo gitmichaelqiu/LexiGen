@@ -40,6 +40,8 @@ LexiGen 是一款 **开源** 的首字母填空生成器，**零成本** 使用�
 2. 选择您平台的对应版本
 3. 启动 LexiGen
 
+注意，云盘的更新可能比较慢，所以优先从 GitHub Releases 中下载。
+
 ## 💡 自定义
 
 - 自定义 `LexiGenAssets/prompt.txt` 中的prompt，`{word}` 是您输入单词的占位符
