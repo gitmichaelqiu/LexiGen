@@ -1,7 +1,6 @@
-analysis_prompt: null
+analysis_prompt: test
 api_url: http://127.0.0.1:11434/api/generate
-generate_prompt: null
+generate_prompt: test
 language: English
 model: qwen2.5:3b
-tense_prompt: Create a simple sentence using the word '{word}' using {tense} tense.
-  The sentence should be clear and educational.
+tense_prompt: Repeat the sentence '{sentence}' 2 times

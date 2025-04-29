@@ -51,7 +51,7 @@ class SettingsPanel(ttk.LabelFrame):
         
         ttk.Separator(self.status_labels_frame, orient='vertical').pack(side=tk.LEFT, padx=5, fill='y')
         
-        self.prompt_status_label = ttk.Label(self.status_labels_frame, text=get_translation(language, "using_default_prompt"), foreground="gray")
+        self.prompt_status_label = ttk.Label(self.status_labels_frame, text=get_translation(language, "using_custom_prompt"), foreground="green")
         self.prompt_status_label.pack(side=tk.LEFT, padx=5)
         
         # Buttons
@@ -79,7 +79,7 @@ class SettingsPanel(ttk.LabelFrame):
         self.model_var.trace_add('write', self._on_model_change)
         
         # Initialize prompt state
-        self.using_custom_prompt = False
+        self.using_custom_prompt = True
         self.update_prompt_status()
     
     def _on_language_change(self, event=None):

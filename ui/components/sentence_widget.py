@@ -167,14 +167,16 @@ class SentenceWidgetManager(ttk.LabelFrame):
         show_btn = ttk.Button(
             buttons_frame,
             text=get_translation(self.language, "show"),
-            command=lambda: self._toggle_word(text_widget, show_btn)
+            command=lambda: self._toggle_word(text_widget, show_btn),
+            name="show_button"
         )
         show_btn.pack(side=tk.LEFT, padx=(0, 2))
         
         copy_btn = ttk.Button(
             buttons_frame,
             text=get_translation(self.language, "copy"),
-            command=lambda: self._copy_sentence(text_widget)
+            command=lambda: self._copy_sentence(text_widget),
+            name="copy_button"
         )
         copy_btn.pack(side=tk.LEFT, padx=(0, 2))
         
@@ -185,7 +187,8 @@ class SentenceWidgetManager(ttk.LabelFrame):
             buttons_frame,
             text=get_translation(self.language, "regenerate_button"),
             width=2,
-            command=lambda w=original_word, f=frame: self._regenerate_sentence(w, f)
+            command=lambda w=original_word, f=frame: self._regenerate_sentence(w, f),
+            name="regen_button"
         )
         regen_btn.pack(side=tk.LEFT, padx=(0, 2))
         
@@ -194,7 +197,8 @@ class SentenceWidgetManager(ttk.LabelFrame):
             buttons_frame,
             text=get_translation(self.language, "menu_button"),
             width=2,
-            command=lambda f=frame: self._show_menu(f)
+            command=lambda f=frame: self._show_menu(f),
+            name="menu_button"
         )
         menu_btn.pack(side=tk.LEFT)
         
@@ -323,17 +327,14 @@ class SentenceWidgetManager(ttk.LabelFrame):
                     # Update progress
                     progress_window.update()
                     
-                    # Generate analyses for all sentences
-                    prompt = """Analyze the grammatical usage of '{word}' in this sentence: '{sentence}'
-Focus on:
-1. Tense (e.g., Present Simple, Past Perfect)
-2. Voice (Active/Passive)
-3. Mood (Indicative/Subjunctive)
-4. Function (e.g., Subject, Object, Modifier)
+                    prompt = self.api_service.settings_service.get_settings("analysis_prompt")
 
-Keep the analysis concise and technical. Output in 1 line. Example format:
-"Present Simple, Active Voice. Functions as the subject of the sentence." """
-                    
+                    if r'{word}' not in prompt or r'{sentence}' not in prompt:
+                        messagebox.showerror(
+                            get_translation(self.language, "error_title"),
+                            get_translation(self.language, "invalid_prompt_format")
+                        )
+                        return
                     # Generate analyses one by one
                     for i, frame in enumerate(missing_analyses):
                         word = frame.text_widget.original_word
@@ -658,6 +659,14 @@ Keep the analysis concise and technical. Output in 1 line. Example format:
         
         # Generate new sentence
         prompt = self.api_service.settings_service.get_settings("generate_prompt")
+
+        if r'{word}' not in prompt:
+            messagebox.showerror(
+                get_translation(self.language, "error_title"),
+                get_translation(self.language, "invalid_prompt_format")
+            )
+            return
+
         new_sentence = self.api_service.generate_sentence(word, prompt)
         
         if new_sentence:
@@ -709,20 +718,42 @@ Keep the analysis concise and technical. Output in 1 line. Example format:
         
         # Update individual sentence widgets
         for frame in self.sentence_widgets:
-            if frame.winfo_exists():
-                # Update show/hide button for each sentence
-                if hasattr(frame.text_widget, 'show_button'):
-                    if frame.text_widget.word_visible:
-                        frame.text_widget.show_button.configure(text=get_translation(language, "hide"))
-                    else:
-                        frame.text_widget.show_button.configure(text=get_translation(language, "show"))
+            if not frame.winfo_exists():
+                continue
+            
+            # Update show/hide button based on current visibility state
+            if hasattr(frame.text_widget, 'show_button'):
+                if frame.text_widget.word_visible:
+                    frame.text_widget.show_button.configure(text=get_translation(language, "hide"))
+                else:
+                    frame.text_widget.show_button.configure(text=get_translation(language, "show"))
+            
+            # Find the buttons frame - typically the frame grid positioned at column 2
+            buttons_frame = None
+            for child in frame.winfo_children():
+                if isinstance(child, ttk.Frame) and child.grid_info().get('column') == 2:
+                    buttons_frame = child
+                    break
                 
-                # Update other buttons in each sentence frame
-                for child in frame.winfo_children():
-                    if isinstance(child, ttk.Button):
-                        current_text = child.cget("text")
-                        if current_text in ["Copy", "复制", get_translation(self.language, "copy")]:
-                            child.configure(text=get_translation(language, "copy"))
+            if not buttons_frame:
+                continue
+            
+            # Update all buttons in the frame
+            for button in buttons_frame.winfo_children():
+                if not isinstance(button, ttk.Button):
+                    continue
+                
+                # Use button names to identify them
+                button_name = str(button).split(".")[-1]
+                
+                if "copy_button" in button_name:
+                    button.configure(text=get_translation(language, "copy"))
+                    
+                elif "regen_button" in button_name:
+                    button.configure(text=get_translation(language, "regenerate_button"))
+                    
+                elif "menu_button" in button_name:
+                    button.configure(text=get_translation(language, "menu_button"))
 
     def _show_menu(self, frame):
         """Show the menu for a sentence frame."""
@@ -902,12 +933,15 @@ Keep the analysis concise and technical. Output in 1 line. Example format:
         word = frame.text_widget.original_word
         
         # Get tense prompt template from settings
-        prompt_template = self.api_service.settings_service.get_settings("tense_prompt") if hasattr(self.api_service, 'settings_service') and self.api_service.settings_service else None
-        if prompt_template:
+        prompt_template = self.api_service.settings_service.get_settings("tense_prompt")
+        try:
             prompt = prompt_template.format(word=word, tense=tense)
-        else:
-            # Fallback to default
-            prompt = f"Create a simple sentence using the word '{word}' using {tense} tense. The sentence should be clear and educational."
+        except Exception as e:
+            messagebox.showerror(
+                get_translation(self.language, "error_title"),
+                get_translation(self.language, "invalid_prompt_format").format(error=str(e))
+            )
+            return
         
         # Generate new sentence with the specified tense
         new_sentence = self.api_service.generate_sentence(word, prompt)
@@ -1048,19 +1082,14 @@ class AnalysisWindow(tk.Toplevel):
         
         # Get analysis prompt from settings
         prompt_template = self.api_service.settings_service.get_settings("analysis_prompt") if hasattr(self.api_service, 'settings_service') and self.api_service.settings_service else None
-        if prompt_template:
-            prompt = prompt_template.format(word=self.word, sentence=self.sentence)
-        else:
-            # Use default analysis prompt if none is found
-            prompt = f"""Analyze the grammatical usage of '{self.word}' in this sentence: '{self.sentence}'
-Focus on:
-1. Tense (e.g., Present Simple, Past Perfect)
-2. Voice (Active/Passive)
-3. Mood (Indicative/Subjunctive)
-4. Function (e.g., Subject, Object, Modifier)
+        prompt = prompt_template.format(word=self.word, sentence=self.sentence)
 
-Keep the analysis concise and technical. Output in 1 line. Example format:
-"Present Simple, Active Voice. Functions as the subject of the sentence." """
+        if r'{word}' not in prompt or r'{sentence}' not in prompt:
+            messagebox.showerror(
+                get_translation(self.language, "error_title"),
+                get_translation(self.language, "invalid_prompt_format")
+            )
+            return
         
         self.analysis = self.api_service.generate_sentence(self.word, prompt)
         

@@ -99,9 +99,10 @@ TRANSLATIONS = {
         "simple": "Simple",
         "continuous": "Continuous",
         "perfect": "Perfect",
-        "perfect_continuous": "Perfect Continuous"
+        "perfect_continuous": "Perfect Continuous",
+        "invalid_prompt_format": "Invalid prompt format."
     },
-    "zh": {
+    "简体中文": {
         "settings": "设置",
         "api_url": "API URL:",
         "model": "模型:",
@@ -118,7 +119,7 @@ TRANSLATIONS = {
         "input_words": "输入单词",
         "enter_words": "输入单词，用逗号分隔",
         "generate": "生成",
-        "append": "附加",
+        "append": "添加",
         "generating": "生成句子...",
         "generated_sentences": "生成的句子",
         "export_docx": "导出为Word",
@@ -161,16 +162,16 @@ TRANSLATIONS = {
         "error_title": "错误",
         "update_check_error": "检查更新失败，请稍后再试。",
         "update_error_msg": "检查更新失败:\n{error}",
-        "prompt_error_msg": "读取提示文件失败: {error}\n使用默认提示。",
+        "prompt_error_msg": "读取提示词文件失败: {error}\n使用默认提示词。",
         "generation_error_msg": "生成句子失败: {error}\n请检查服务器设置和连接。",
         "unexpected_error_msg": "发生意外错误: {error}",
         "startup_error_msg": "启动应用程序失败:\n{error}",
-        "using_default_prompt": "使用默认提示",
-        "using_custom_prompt": "使用自定义提示",
-        "using_generate_prompt": "使用生成提示",
-        "using_analysis_prompt": "使用分析提示",
-        "toggle_prompt": "切换提示",
-        "invalid_prompt_format": "无效提示格式: 缺少 {word} 占位符。\n请在提示文件中添加 {word} 占位符。",
+        "using_default_prompt": "使用默认提示词",
+        "using_custom_prompt": "使用自定义提示词",
+        "using_generate_prompt": "使用生成提示词",
+        "using_analysis_prompt": "使用分析提示词",
+        "toggle_prompt": "切换提示词",
+        "invalid_prompt_format": "无效提示格式: 缺少 {word} 占位符。\n请在提示词文件中添加 {word} 占位符。",
         "word_analysis": "单词分析",
         "regenerate_analysis": "重新生成分析",
         "include_analysis_title": "包含分析",
@@ -196,7 +197,8 @@ TRANSLATIONS = {
         "simple": "一般",
         "continuous": "进行",
         "perfect": "完成",
-        "perfect_continuous": "完成进行"
+        "perfect_continuous": "完成进行",
+        "invalid_prompt_format": "无效提示词格式。"
     }
 }
 
