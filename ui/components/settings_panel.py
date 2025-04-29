@@ -211,11 +211,11 @@ class SettingsPanel(ttk.LabelFrame):
     
     def update_update_button(self, status):
         if status == "new_version":
-            # Change the check updates button to show there's a new version available
-            self.update_btn.configure(
-                text=get_translation(self.language, "new_version"), 
-                style="UpdateAvailable.TButton"
-            )
+            # When a new version is available, show only the direct update button
+            
+            # If the normal update button exists, hide it
+            if hasattr(self, 'update_btn') and self.update_btn.winfo_ismapped():
+                self.update_btn.pack_forget()
             
             # Add a direct update button if not already present
             if not hasattr(self, 'direct_update_btn'):
@@ -227,13 +227,19 @@ class SettingsPanel(ttk.LabelFrame):
                 )
                 self.direct_update_btn.pack(side=tk.LEFT, padx=5)
         elif status == "up_to_date":
+            # Change the regular update button to show it's up to date
             self.update_btn.configure(
                 text=get_translation(self.language, "up_to_date"), 
                 style="UpToDate.TButton"
             )
             # Remove direct update button if it exists
             self._remove_direct_update_btn()
+            
+            # Make sure the regular update button is visible
+            if hasattr(self, 'update_btn') and not self.update_btn.winfo_ismapped():
+                self.update_btn.pack(side=tk.LEFT, padx=5)
         else:
+            # Change back to regular check for updates button
             self.update_btn.configure(
                 text=get_translation(self.language, "check_updates"), 
                 style="Update.TButton"
@@ -241,7 +247,9 @@ class SettingsPanel(ttk.LabelFrame):
             # Remove direct update button if it exists
             self._remove_direct_update_btn()
             
-        self.update_btn.pack(side=tk.LEFT, padx=5)
+            # Make sure the regular update button is visible
+            if hasattr(self, 'update_btn') and not self.update_btn.winfo_ismapped():
+                self.update_btn.pack(side=tk.LEFT, padx=5)
     
     def _direct_update(self):
         """Trigger a direct update download"""
