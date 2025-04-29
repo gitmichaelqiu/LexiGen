@@ -16,7 +16,8 @@ class SettingsPanel(ttk.LabelFrame):
         self.version_label.grid(row=0, column=0, padx=5, sticky=tk.W)
         
         # Language Selection
-        ttk.Label(self, text=get_translation(language, "language")).grid(row=0, column=1, padx=5)
+        self.language_label = ttk.Label(self, text=get_translation(language, "language"))
+        self.language_label.grid(row=0, column=1, padx=5)
         self.language_var = tk.StringVar(value=language)
         self.language_select = ttk.Combobox(self, textvariable=self.language_var, 
                                           values=available_languages, state="readonly", width=10)
@@ -24,13 +25,15 @@ class SettingsPanel(ttk.LabelFrame):
         self.language_select.bind('<<ComboboxSelected>>', self._on_language_change)
         
         # API URL Entry
-        ttk.Label(self, text=get_translation(language, "api_url")).grid(row=0, column=3, padx=5)
+        self.api_url_label = ttk.Label(self, text=get_translation(language, "api_url"))
+        self.api_url_label.grid(row=0, column=3, padx=5)
         self.api_url_var = tk.StringVar(value=self.api_service.api_url)
         self.api_url_entry = ttk.Entry(self, textvariable=self.api_url_var, width=40)
         self.api_url_entry.grid(row=0, column=4, padx=5)
         
         # Model Selection
-        ttk.Label(self, text=get_translation(language, "model")).grid(row=0, column=5, padx=5)
+        self.model_label = ttk.Label(self, text=get_translation(language, "model"))
+        self.model_label.grid(row=0, column=5, padx=5)
         self.model_var = tk.StringVar(value=self.api_service.model)
         self.model_select = ttk.Combobox(self, textvariable=self.model_var, width=20, state="readonly")
         self.model_select.grid(row=0, column=6, padx=5)
@@ -165,20 +168,11 @@ class SettingsPanel(ttk.LabelFrame):
         self.language = language
         self.configure(text=get_translation(language, "settings"))
         
-        # Update all labels
-        for child in self.winfo_children():
-            if isinstance(child, ttk.Label):
-                text = child.cget("text")
-                if text.startswith("v"):  # Version label
-                    continue
-                # Update specific labels with their translations
-                elif "API" in text or "api" in text:
-                    child.configure(text=get_translation(language, "api_url"))
-                elif "Model" in text.lower():
-                    child.configure(text=get_translation(language, "model"))
-                elif "Language" in text.lower():
-                    child.configure(text=get_translation(language, "language"))
-
+        # Update the main labels directly
+        self.language_label.configure(text=get_translation(language, "language"))
+        self.api_url_label.configure(text=get_translation(language, "api_url"))
+        self.model_label.configure(text=get_translation(language, "model"))
+        
         # Update status label based on current state
         if hasattr(self, 'status_label'):
             if self.api_service.server_connected:
