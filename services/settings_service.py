@@ -68,7 +68,7 @@ class SettingsService:
         # Filter out excluded settings before updating
         filtered_settings = {k: v for k, v in settings_dict.items() if k not in self.EXCLUDED_SETTINGS}
         self.settings.update(filtered_settings)
-        return self.save_settings()
+        return self.save_settings() 
     
     def get_settings(self, key):
         """Get a setting value by key (no default, for strict access)."""
