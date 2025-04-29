@@ -63,7 +63,7 @@ TRANSLATIONS = {
         "no_updates_msg": "You are using the latest version (v{version})",
         "error_title": "Error",
         "update_check_error": "Failed to check for updates. Please try again later.",
-        "update_error_msg": "Failed to check for updates:\n{error}",
+        "update_error_msg": "Failed to check for updates.",
         "prompt_error_msg": "Failed to read prompt file: {error}\nUsing default prompt.",
         "generation_error_msg": "Failed to generate sentence: {error}\nPlease check server settings and connection.",
         "unexpected_error_msg": "An unexpected error occurred: {error}",
@@ -101,6 +101,12 @@ TRANSLATIONS = {
         "perfect": "Perfect",
         "perfect_continuous": "Perfect Continuous",
         "subjunctive_mood": "Subjunctive Mood",
+        "conditional": "Conditional",
+        "zero_conditional": "Zero Conditional",
+        "first_conditional": "First Conditional",
+        "second_conditional": "Second Conditional",
+        "third_conditional": "Third Conditional",
+        "imperative_mood": "Imperative Mood",
         "invalid_prompt_format": "Invalid prompt format."
     },
     "简体中文": {
@@ -200,6 +206,12 @@ TRANSLATIONS = {
         "perfect": "完成时",
         "perfect_continuous": "完成进行时",
         "subjunctive_mood": "虚拟语气",
+        "conditional": "条件句",
+        "zero_conditional": "零条件句",
+        "first_conditional": "第一条件句",
+        "second_conditional": "第二条件句",
+        "third_conditional": "第三条件句",
+        "imperative_mood": "祈使句",
         "invalid_prompt_format": "无效提示词格式。"
     }
 }

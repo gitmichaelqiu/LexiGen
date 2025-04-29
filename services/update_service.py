@@ -84,7 +84,7 @@ class UpdateService:
         except Exception as e:
             messagebox.showerror(
                 get_translation(self.language, "error_title"),
-                get_translation(self.language, "update_error_msg").format(error=str(e))
+                get_translation(self.language, "update_error_msg")
             )
             return "error"
     
@@ -264,7 +264,7 @@ class UpdateService:
             
         messagebox.showerror(
             get_translation(self.language, "update_error"),
-            get_translation(self.language, "update_error_msg").format(error=error_message)
+            get_translation(self.language, "update_error_msg")
         )
         
         self.is_downloading = False
@@ -300,7 +300,7 @@ class UpdateService:
         except Exception as e:
             messagebox.showerror(
                 get_translation(self.language, "update_error"),
-                get_translation(self.language, "update_error_msg").format(error=str(e))
+                get_translation(self.language, "update_error_msg")
             )
             
             # Clean up

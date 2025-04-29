@@ -865,7 +865,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
             command=lambda: self._generate_with_tense(frame, "Past Future Perfect Continuous")
         )
         
-        # Add Subjunctive Mood submenu
+        # Subjunctive Mood submenu
         subjunctive_menu = tk.Menu(tense_menu, tearoff=0)
         tense_menu.add_cascade(label=get_translation(self.language, "subjunctive_mood"), menu=subjunctive_menu)
         subjunctive_menu.add_command(
@@ -875,6 +875,32 @@ class SentenceWidgetManager(ttk.LabelFrame):
         subjunctive_menu.add_command(
             label=get_translation(self.language, "past"),
             command=lambda: self._generate_with_tense(frame, "Past Subjunctive Mood")
+        )
+        
+        # Conditional submenu
+        conditional_menu = tk.Menu(tense_menu, tearoff=0)
+        tense_menu.add_cascade(label=get_translation(self.language, "conditional"), menu=conditional_menu)
+        conditional_menu.add_command(
+            label=get_translation(self.language, "zero_conditional"),
+            command=lambda: self._generate_with_tense(frame, "Zero Conditional")
+        )
+        conditional_menu.add_command(
+            label=get_translation(self.language, "first_conditional"),
+            command=lambda: self._generate_with_tense(frame, "First Conditional")
+        )
+        conditional_menu.add_command(
+            label=get_translation(self.language, "second_conditional"),
+            command=lambda: self._generate_with_tense(frame, "Second Conditional")
+        )
+        conditional_menu.add_command(
+            label=get_translation(self.language, "third_conditional"),
+            command=lambda: self._generate_with_tense(frame, "Third Conditional")
+        )
+
+        # Imperative Mood submenu
+        tense_menu.add_command(
+            label=get_translation(self.language, "imperative_mood"),
+            command=lambda: self._generate_with_tense(frame, "Imperative Mood")
         )
         
         menu.add_separator()
