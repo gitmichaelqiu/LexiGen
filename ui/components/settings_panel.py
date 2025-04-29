@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from models.translations import get_translation
-from models.config import VERSION
+from models.config import VERSION, DEFAULT_CONFIG
 
 class SettingsPanel(ttk.LabelFrame):
     def __init__(self, parent, language, available_languages, api_service, language_change_callback, main_window):
@@ -63,12 +63,21 @@ class SettingsPanel(ttk.LabelFrame):
                                   command=self.open_help)
         self.help_btn.pack(side=tk.LEFT, padx=5)
         
+        # Toggle prompt button
+        self.toggle_prompt_btn = ttk.Button(self.buttons_row, text=get_translation(language, "toggle_prompt"),
+                                          command=self.toggle_prompt)
+        self.toggle_prompt_btn.pack(side=tk.LEFT, padx=5)
+        
         self.update_btn = ttk.Button(self.buttons_row, text=get_translation(language, "check_updates"),
                                    command=lambda: self.main_window.check_for_updates(show_message=True))
         
         # Bind API URL and model changes
         self.api_url_var.trace_add('write', self._on_api_url_change)
         self.model_var.trace_add('write', self._on_model_change)
+        
+        # Initialize prompt state
+        self.using_custom_prompt = False
+        self.update_prompt_status()
     
     def _on_language_change(self, event=None):
         new_language = self.language_var.get()
@@ -89,6 +98,47 @@ class SettingsPanel(ttk.LabelFrame):
         # Notify parent window if available
         if hasattr(self.master, 'master') and hasattr(self.master.master, 'on_model_change'):
             self.master.master.on_model_change(self.model_var.get())
+    
+    def toggle_prompt(self):
+        """Toggle between default and custom prompts."""
+        self.using_custom_prompt = not self.using_custom_prompt
+        
+        # Get settings service through API service
+        settings_service = self.api_service.settings_service
+        
+        if self.using_custom_prompt:
+            # Check if custom prompts exist in settings.yaml
+            custom_generate_prompt = settings_service.settings.get("generate_prompt")
+            custom_analysis_prompt = settings_service.settings.get("analysis_prompt")
+            
+            # Only switch to custom if values exist and are not empty
+            if custom_generate_prompt and custom_analysis_prompt:
+                # Store current values in settings service
+                settings_service.settings["generate_prompt"] = custom_generate_prompt
+                settings_service.settings["analysis_prompt"] = custom_analysis_prompt
+            else:
+                # If no custom prompts, stay on default and don't toggle
+                self.using_custom_prompt = False
+        else:
+            # Switch to default prompts
+            settings_service.settings["generate_prompt"] = DEFAULT_CONFIG["generate_prompt"]
+            settings_service.settings["analysis_prompt"] = DEFAULT_CONFIG["analysis_prompt"]
+        
+        # Update the prompt status label
+        self.update_prompt_status()
+    
+    def update_prompt_status(self):
+        """Update the prompt status label based on current state."""
+        if self.using_custom_prompt:
+            self.prompt_status_label.config(
+                text=get_translation(self.language, "using_custom_prompt"),
+                foreground="green"
+            )
+        else:
+            self.prompt_status_label.config(
+                text=get_translation(self.language, "using_default_prompt"),
+                foreground="gray"
+            )
     
     def check_server_status(self):
         if self.api_service.check_server_status():
@@ -144,15 +194,12 @@ class SettingsPanel(ttk.LabelFrame):
         
         # Update prompt status label
         if hasattr(self, 'prompt_status_label'):
-            current_text = self.prompt_status_label.cget("text")
-            if "default" in current_text.lower() or "默认" in current_text:
-                self.prompt_status_label.configure(text=get_translation(language, "using_default_prompt"))
-            else:
-                self.prompt_status_label.configure(text=get_translation(language, "using_custom_prompt"))
+            self.update_prompt_status()
         
         # Update buttons
         self.check_server_btn.configure(text=get_translation(language, "check_server"))
         self.help_btn.configure(text=get_translation(language, "setup_help"))
+        self.toggle_prompt_btn.configure(text=get_translation(language, "toggle_prompt"))
         
         # Update update button based on current state
         if hasattr(self, 'update_btn'):
