@@ -11,7 +11,7 @@ DEFAULT_CONFIG = {
     "language": "English",
     "prompt_file": "prompt.txt",
     "generate_prompt": "Create a simple sentence using the word '{word}'. The sentence should be clear and educational.",
-    "analysis_prompt": "Analyze the word '{word}' in the context of the sentence."
+    "analysis_prompt": "Analyze the grammatical usage of '{word}' in this sentence: '{sentence}'\nFocus on:\n1. Tense (e.g., Present Simple, Past Perfect)\n2. Voice (Active/Passive)\n3. Mood (Indicative/Subjunctive)\n4. Function (e.g., Subject, Object, Modifier)\n\nKeep the analysis concise and technical. Output in 1 line. Example format:\n\"Present Simple, Active Voice. Functions as the subject of the sentence.\" "
 }
 
 def get_assets_path():

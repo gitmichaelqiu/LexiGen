@@ -1,3 +1,14 @@
-api_url: http://127.0.0.1:11434/api/generate
-language: English
-model: qwen2.5:3b
+api_url: "http://127.0.0.1:11434/api/generate"
+model: "qwen2.5:3b"
+language: "English"
+generate_prompt: "Create a simple sentence using the word '{word}'. The sentence should be clear and educational."
+analysis_prompt: |
+  Analyze the grammatical usage of '{word}' in this sentence: '{sentence}'
+  Focus on:
+  1. Tense (e.g., Present Simple, Past Perfect)
+  2. Voice (Active/Passive)
+  3. Mood (Indicative/Subjunctive)
+  4. Function (e.g., Subject, Object, Modifier)
+
+  Keep the analysis concise and technical. Output in 1 line. Example format:
+  "Present Simple, Active Voice. Functions as the subject of the sentence."

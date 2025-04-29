@@ -901,20 +901,12 @@ class AnalysisWindow(tk.Toplevel):
             )
             return
         
-        # Get prompt from main application config
-        from models.config import DEFAULT_CONFIG
-        
-        # Generate analysis with improved prompt
-        prompt = f"""Analyze the grammatical usage of '{self.word}' in this sentence: '{self.sentence}'
-Focus on:
-1. Tense (e.g., Present Simple, Past Perfect)
-2. Voice (Active/Passive)
-3. Mood (Indicative/Subjunctive)
-4. Function (e.g., Subject, Object, Modifier)
-
-Keep the analysis concise and technical. Output in 1 line. Example format:
-"Present Simple, Active Voice. Functions as the subject of the sentence." """
-        
+        # Get analysis prompt from settings
+        prompt_template = self.api_service.settings_service.get_settings("analysis_prompt") if hasattr(self.api_service, 'settings_service') and self.api_service.settings_service else None
+        if prompt_template:
+            prompt = prompt_template.format(word=self.word, sentence=self.sentence)
+        else:
+            prompt = f"Analyze the grammatical usage of '{self.word}' in this sentence: '{self.sentence}'"
         self.analysis = self.api_service.generate_sentence(self.word, prompt)
         
         if self.analysis:
