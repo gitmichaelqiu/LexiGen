@@ -108,8 +108,8 @@ class SettingsPanel(ttk.LabelFrame):
         
         if self.using_custom_prompt:
             # Check if custom prompts exist in settings.yaml
-            custom_generate_prompt = settings_service.settings.get("generate_prompt")
-            custom_analysis_prompt = settings_service.settings.get("analysis_prompt")
+            custom_generate_prompt = settings_service.external_generate_prompt
+            custom_analysis_prompt = settings_service.external_analysis_prompt
             
             # Only switch to custom if values exist and are not empty
             if custom_generate_prompt and custom_analysis_prompt:
