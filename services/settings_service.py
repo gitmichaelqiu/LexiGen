@@ -25,15 +25,12 @@ class SettingsService:
                 for key, value in DEFAULT_CONFIG.items():
                     if key == 'generate_prompt':
                         self.external_generate_prompt = self.settings.get('generate_prompt')
-                        print(self.external_generate_prompt)
                     elif key == 'analysis_prompt':
                         self.external_analysis_prompt = self.settings.get('analysis_prompt')
-                        print(self.external_analysis_prompt)
 
                     if key not in self.settings:
                         self.settings[key] = value
             except Exception as e:
-                print(f"Error loading settings: {str(e)}")
                 self._initialize_default_settings()
         else:
             # Use default settings if file doesn't exist
@@ -49,9 +46,6 @@ class SettingsService:
         # Save the external prompts to the settings file
         self.settings['generate_prompt'] = self.external_generate_prompt
         self.settings['analysis_prompt'] = self.external_analysis_prompt
-        print("Saving settings...")
-        print(self.settings['generate_prompt'])
-        print(self.settings['analysis_prompt'])
 
         try:
             # Make a copy of settings and filter out excluded settings
@@ -60,7 +54,6 @@ class SettingsService:
                 yaml.safe_dump(settings_to_save, f, allow_unicode=True, default_flow_style=False)
             return True
         except Exception as e:
-            print(f"Error saving settings: {str(e)}")
             return False
     
     def get_setting(self, key, default=None):
