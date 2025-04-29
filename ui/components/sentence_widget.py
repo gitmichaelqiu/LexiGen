@@ -301,6 +301,12 @@ class SentenceWidgetManager(ttk.LabelFrame):
                     )
                     # Continue without analyses
                     include_analysis = False
+                elif r'{word}' not in self.api_service.settings_service.get_settings("analysis_prompt") or r'{sentence}' not in self.api_service.settings_service.get_settings("analysis_prompt"):
+                    messagebox.showerror(
+                        get_translation(self.language, "error_title"),
+                        get_translation(self.language, "invalid_prompt_format")
+                    )
+                    return
                 else:
                     # Create progress dialog
                     progress_window = tk.Toplevel(self)
