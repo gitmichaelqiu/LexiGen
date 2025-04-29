@@ -1,12 +1,13 @@
 import os
 import json
+import yaml
 from models.config import DEFAULT_CONFIG, get_settings_path
 
 class SettingsService:
     """Service for managing application settings and persistence."""
     
     # Define settings that should not be persisted
-    EXCLUDED_SETTINGS = ['prompt_file', 'default_prompt']
+    EXCLUDED_SETTINGS = ['prompt_file', 'generate_prompt', 'analysis_prompt']
     
     def __init__(self, config_path=None):
         """Initialize settings service with specified config path."""
@@ -15,12 +16,11 @@ class SettingsService:
         self.load_settings()
     
     def load_settings(self):
-        """Load settings from JSON file or use defaults if file doesn't exist."""
+        """Load settings from YAML file or use defaults if file doesn't exist."""
         if os.path.exists(self.config_path):
             try:
                 with open(self.config_path, 'r', encoding='utf-8') as f:
-                    self.settings = json.load(f)
-                    
+                    self.settings = yaml.safe_load(f) or {}
                 # Ensure all required settings exist by filling gaps with defaults
                 for key, value in DEFAULT_CONFIG.items():
                     if key not in self.settings and key not in self.EXCLUDED_SETTINGS:
@@ -37,13 +37,12 @@ class SettingsService:
         self.settings = {k: v for k, v in DEFAULT_CONFIG.items() if k not in self.EXCLUDED_SETTINGS}
     
     def save_settings(self):
-        """Save current settings to JSON file, excluding certain parameters."""
+        """Save current settings to YAML file, excluding certain parameters."""
         try:
             # Make a copy of settings and filter out excluded settings
             settings_to_save = {k: v for k, v in self.settings.items() if k not in self.EXCLUDED_SETTINGS}
-            
             with open(self.config_path, 'w', encoding='utf-8') as f:
-                json.dump(settings_to_save, f, indent=4, ensure_ascii=False)
+                yaml.safe_dump(settings_to_save, f, allow_unicode=True, default_flow_style=False)
             return True
         except Exception as e:
             print(f"Error saving settings: {str(e)}")
@@ -69,4 +68,11 @@ class SettingsService:
         # Filter out excluded settings before updating
         filtered_settings = {k: v for k, v in settings_dict.items() if k not in self.EXCLUDED_SETTINGS}
         self.settings.update(filtered_settings)
-        return self.save_settings() 
+        return self.save_settings()
+    
+    def get_settings(self, key):
+        """Get a setting value by key (no default, for strict access)."""
+        # For excluded settings, always return from DEFAULT_CONFIG
+        if key in self.EXCLUDED_SETTINGS:
+            return DEFAULT_CONFIG.get(key)
+        return self.settings.get(key) 

@@ -4,10 +4,15 @@ from models.config import DEFAULT_CONFIG
 from models.translations import get_translation
 
 class APIService:
-    def __init__(self, language="English", api_url=None):
+    def __init__(self, language="English", api_url=None, settings_service=None):
         self.language = language
-        self.api_url = api_url if api_url else DEFAULT_CONFIG["api_url"]
-        self.model = DEFAULT_CONFIG["model"]
+        self.settings_service = settings_service
+        if self.settings_service:
+            self.api_url = api_url if api_url else self.settings_service.get_settings("api_url")
+            self.model = self.settings_service.get_settings("model")
+        else:
+            self.api_url = api_url
+            self.model = None
         self.server_connected = False
         self.available_models = []
 

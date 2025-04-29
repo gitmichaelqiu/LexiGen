@@ -1,0 +1,3 @@
+api_url: http://127.0.0.1:11434/api/generate
+language: English
+model: qwen2.5:3b

@@ -10,7 +10,8 @@ DEFAULT_CONFIG = {
     "model": "qwen2.5:3b",
     "language": "English",
     "prompt_file": "prompt.txt",
-    "default_prompt": "Create a simple sentence using the word '{word}'. The sentence should be clear and educational."
+    "generate_prompt": "Create a simple sentence using the word '{word}'. The sentence should be clear and educational.",
+    "analysis_prompt": "Analyze the word '{word}' in the context of the sentence."
 }
 
 def get_assets_path():
@@ -56,8 +57,8 @@ def get_translations_path():
     return translations_dir
 
 def get_settings_path():
-    """Returns the path to the settings.json file."""
-    return os.path.join(get_assets_path(), "settings.json")
+    """Returns the path to the settings.yaml file."""
+    return os.path.join(get_assets_path(), "settings.yaml")
 
 def get_prompt_path():
     """Returns the path to the prompt.txt file."""

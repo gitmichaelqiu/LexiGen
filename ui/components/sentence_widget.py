@@ -645,11 +645,9 @@ Keep the analysis concise and technical. Output in 1 line. Example format:
             )
             return
         
-        # Get prompt from main application config
-        from models.config import DEFAULT_CONFIG
-        
         # Generate new sentence
-        new_sentence = self.api_service.generate_sentence(word, DEFAULT_CONFIG["default_prompt"])
+        prompt = self.api_service.settings_service.get_settings("generate_prompt") if hasattr(self.api_service, 'settings_service') and self.api_service.settings_service else None
+        new_sentence = self.api_service.generate_sentence(word, prompt)
         
         if new_sentence:
             # Create masked sentence

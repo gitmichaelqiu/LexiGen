@@ -22,15 +22,13 @@ class MainWindow:
         self.settings_service = SettingsService()
         
         # Initialize services with settings from service
-        self.language = self.settings_service.get_setting("language", DEFAULT_CONFIG["language"])
+        self.language = self.settings_service.get_setting("language", self.settings_service.get_settings("language"))
         self.word_processor = WordProcessor(self.language)
         
-        # Get API URL from settings
-        api_url = self.settings_service.get_setting("api_url", DEFAULT_CONFIG["api_url"])
-        self.api_service = APIService(self.language, api_url)
-        
-        # Get model from settings
-        model = self.settings_service.get_setting("model", DEFAULT_CONFIG["model"])
+        # Get API URL and model from settings
+        api_url = self.settings_service.get_setting("api_url", self.settings_service.get_settings("api_url"))
+        self.api_service = APIService(self.language, api_url, settings_service=self.settings_service)
+        model = self.settings_service.get_setting("model", self.settings_service.get_settings("model"))
         self.api_service.model = model
         
         self.document_service = DocumentService(self.language)
@@ -197,7 +195,8 @@ class MainWindow:
         sentences_generated = 0
         
         for i, word in enumerate(words):
-            sentence = self.api_service.generate_sentence(word, DEFAULT_CONFIG["default_prompt"])
+            prompt = self.settings_service.get_settings("generate_prompt")
+            sentence = self.api_service.generate_sentence(word, prompt)
             if sentence:
                 self.sentence_manager.add_sentence(word, sentence)
                 sentences_generated += 1

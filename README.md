@@ -51,7 +51,7 @@ LexiGen now uses a dedicated `LexiGenAssets` folder for all external files:
 - `LexiGenAssets/` - The main assets directory
   - `translations/` - Translation files (e.g., zh_CN.json)
   - `prompt.txt` - Custom prompt template file
-  - `settings.json` - Application settings
+  - `settings.yaml` - Application settings
 
 This structure separates application code from user data, making it easier to manage and backup your settings.
 
