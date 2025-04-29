@@ -195,6 +195,10 @@ class SettingsPanel(ttk.LabelFrame):
         self.help_btn.configure(text=get_translation(language, "setup_help"))
         self.toggle_prompt_btn.configure(text=get_translation(language, "toggle_prompt"))
         
+        # Update direct update button if present
+        if hasattr(self, 'direct_update_btn'):
+            self.direct_update_btn.configure(text=get_translation(language, "update_now_title"))
+        
         # Update update button based on current state
         if hasattr(self, 'update_btn'):
             current_text = self.update_btn.cget("text")
@@ -207,9 +211,45 @@ class SettingsPanel(ttk.LabelFrame):
     
     def update_update_button(self, status):
         if status == "new_version":
-            self.update_btn.configure(text=get_translation(self.language, "new_version"), style="UpdateAvailable.TButton")
+            # Change the check updates button to show there's a new version available
+            self.update_btn.configure(
+                text=get_translation(self.language, "new_version"), 
+                style="UpdateAvailable.TButton"
+            )
+            
+            # Add a direct update button if not already present
+            if not hasattr(self, 'direct_update_btn'):
+                self.direct_update_btn = ttk.Button(
+                    self.buttons_row, 
+                    text=get_translation(self.language, "update_now_title"),
+                    command=self._direct_update,
+                    style="UpdateAvailable.TButton"
+                )
+                self.direct_update_btn.pack(side=tk.LEFT, padx=5)
         elif status == "up_to_date":
-            self.update_btn.configure(text=get_translation(self.language, "up_to_date"), style="UpToDate.TButton")
+            self.update_btn.configure(
+                text=get_translation(self.language, "up_to_date"), 
+                style="UpToDate.TButton"
+            )
+            # Remove direct update button if it exists
+            self._remove_direct_update_btn()
         else:
-            self.update_btn.configure(text=get_translation(self.language, "check_updates"), style="Update.TButton")
+            self.update_btn.configure(
+                text=get_translation(self.language, "check_updates"), 
+                style="Update.TButton"
+            )
+            # Remove direct update button if it exists
+            self._remove_direct_update_btn()
+            
         self.update_btn.pack(side=tk.LEFT, padx=5)
+    
+    def _direct_update(self):
+        """Trigger a direct update download"""
+        # Call the update service with auto_update=True and force show_message=True
+        self.main_window.update_service.check_for_updates(show_message=True, auto_update=True)
+    
+    def _remove_direct_update_btn(self):
+        """Remove the direct update button if it exists"""
+        if hasattr(self, 'direct_update_btn'):
+            self.direct_update_btn.destroy()
+            delattr(self, 'direct_update_btn')

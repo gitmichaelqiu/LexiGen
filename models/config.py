@@ -2,7 +2,7 @@ import os
 import sys
 
 # Version information
-VERSION = "1.4.1"
+VERSION = "1.3.1"
 
 # Default configuration
 DEFAULT_CONFIG = {

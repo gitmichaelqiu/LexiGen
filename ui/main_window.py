@@ -33,6 +33,8 @@ class MainWindow:
         
         self.document_service = DocumentService(self.language)
         self.update_service = UpdateService(self.language)
+        # Set root window for the update service
+        self.update_service.set_root(self.root)
         
         # Load translations
         self.available_languages = load_translations()
@@ -219,7 +221,7 @@ class MainWindow:
                     self.append_btn.configure(state="normal")
     
     def check_for_updates(self, show_message=True):
-        result = self.update_service.check_for_updates(show_message)
+        result = self.update_service.check_for_updates(show_message, auto_update=True)
         self.settings_panel.update_update_button(result)
 
     def on_sentences_changed(self, has_sentences):
