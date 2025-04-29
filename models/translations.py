@@ -100,6 +100,7 @@ TRANSLATIONS = {
         "continuous": "Continuous",
         "perfect": "Perfect",
         "perfect_continuous": "Perfect Continuous",
+        "subjunctive_mood": "Subjunctive Mood",
         "invalid_prompt_format": "Invalid prompt format."
     },
     "简体中文": {
@@ -198,6 +199,7 @@ TRANSLATIONS = {
         "continuous": "进行时",
         "perfect": "完成时",
         "perfect_continuous": "完成进行时",
+        "subjunctive_mood": "虚拟语气",
         "invalid_prompt_format": "无效提示词格式。"
     }
 }

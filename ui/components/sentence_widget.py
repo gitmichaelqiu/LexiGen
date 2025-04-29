@@ -865,6 +865,18 @@ class SentenceWidgetManager(ttk.LabelFrame):
             command=lambda: self._generate_with_tense(frame, "Past Future Perfect Continuous")
         )
         
+        # Add Subjunctive Mood submenu
+        subjunctive_menu = tk.Menu(tense_menu, tearoff=0)
+        tense_menu.add_cascade(label=get_translation(self.language, "subjunctive_mood"), menu=subjunctive_menu)
+        subjunctive_menu.add_command(
+            label=get_translation(self.language, "present"),
+            command=lambda: self._generate_with_tense(frame, "Present Subjunctive Mood")
+        )
+        subjunctive_menu.add_command(
+            label=get_translation(self.language, "past"),
+            command=lambda: self._generate_with_tense(frame, "Past Subjunctive Mood")
+        )
+        
         menu.add_separator()
         menu.add_command(
             label=get_translation(self.language, "delete"),
