@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import ttk, scrolledtext, messagebox
 from models.config import VERSION, DEFAULT_CONFIG
 from models.translations import load_translations, get_translation
 from models.word_processor import WordProcessor
@@ -171,6 +171,15 @@ class MainWindow:
         self.sentence_manager.update_texts(self.language)
     
     def generate_sentences(self, append=False):
+        prompt = self.settings_service.get_settings("generate_prompt")
+
+        if r'{word}' not in prompt:
+            messagebox.showerror(
+                get_translation(self.language, "error_title"),
+                get_translation(self.language, "invalid_prompt_format")
+            )
+            return
+
         words = [word.strip().lower() for word in self.word_input.get("1.0", tk.END).strip().split(",")]
         words = [w for w in words if w]
         
@@ -197,7 +206,6 @@ class MainWindow:
         sentences_generated = 0
         
         for i, word in enumerate(words):
-            prompt = self.settings_service.get_settings("generate_prompt")
             sentence = self.api_service.generate_sentence(word, prompt)
             if sentence:
                 self.sentence_manager.add_sentence(word, sentence)
