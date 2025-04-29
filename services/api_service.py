@@ -66,6 +66,11 @@ class APIService:
             )
             return None
         
+        # Check if prompt_template is None and use a default if it is
+        if prompt_template is None:
+            # Default prompt from config
+            prompt_template = "Create a simple sentence using the word '{word}'. The sentence should be clear and educational."
+        
         prompt = prompt_template.format(word=word)
         
         max_attempts = 3

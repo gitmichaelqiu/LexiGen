@@ -90,7 +90,16 @@ TRANSLATIONS = {
         "save": "Save",
         "cancel": "Cancel",
         "edit_analysis": "Edit Analysis",
-        "save_analysis": "Save Analysis"
+        "save_analysis": "Save Analysis",
+        "designate_tense": "Designate Tense",
+        "present": "Present",
+        "past": "Past",
+        "future": "Future",
+        "past_future": "Past Future",
+        "simple": "Simple",
+        "continuous": "Continuous",
+        "perfect": "Perfect",
+        "perfect_continuous": "Perfect Continuous"
     },
     "zh": {
         "settings": "设置",
@@ -178,7 +187,16 @@ TRANSLATIONS = {
         "save": "保存",
         "cancel": "取消",
         "edit_analysis": "编辑分析",
-        "save_analysis": "保存分析"
+        "save_analysis": "保存分析",
+        "designate_tense": "指定时态",
+        "present": "现在",
+        "past": "过去",
+        "future": "将来",
+        "past_future": "过去将来",
+        "simple": "一般",
+        "continuous": "进行",
+        "perfect": "完成",
+        "perfect_continuous": "完成进行"
     }
 }
 

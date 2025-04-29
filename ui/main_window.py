@@ -198,6 +198,9 @@ class MainWindow:
         
         for i, word in enumerate(words):
             prompt = self.settings_service.get_settings("generate_prompt")
+            # If prompt is None, use default from config
+            if prompt is None:
+                prompt = "Create a simple sentence using the word '{word}'. The sentence should be clear and educational."
             sentence = self.api_service.generate_sentence(word, prompt)
             if sentence:
                 self.sentence_manager.add_sentence(word, sentence)

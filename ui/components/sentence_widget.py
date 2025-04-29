@@ -658,6 +658,9 @@ Keep the analysis concise and technical. Output in 1 line. Example format:
         
         # Generate new sentence
         prompt = self.api_service.settings_service.get_settings("generate_prompt") if hasattr(self.api_service, 'settings_service') and self.api_service.settings_service else None
+        # If prompt is None, use default from config
+        if prompt is None:
+            prompt = "Create a simple sentence using the word '{word}'. The sentence should be clear and educational."
         new_sentence = self.api_service.generate_sentence(word, prompt)
         
         if new_sentence:
@@ -746,6 +749,88 @@ Keep the analysis concise and technical. Output in 1 line. Example format:
             label=get_translation(self.language, "edit"),
             command=lambda: self._edit_sentence(frame)
         )
+        
+        # Add Designate Tense submenu
+        tense_menu = tk.Menu(menu, tearoff=0)
+        menu.add_cascade(label=get_translation(self.language, "designate_tense"), menu=tense_menu)
+        
+        # Add tense options
+        present_menu = tk.Menu(tense_menu, tearoff=0)
+        tense_menu.add_cascade(label=get_translation(self.language, "present"), menu=present_menu)
+        present_menu.add_command(
+            label=get_translation(self.language, "simple"),
+            command=lambda: self._generate_with_tense(frame, "Present Simple")
+        )
+        present_menu.add_command(
+            label=get_translation(self.language, "continuous"), 
+            command=lambda: self._generate_with_tense(frame, "Present Continuous")
+        )
+        present_menu.add_command(
+            label=get_translation(self.language, "perfect"), 
+            command=lambda: self._generate_with_tense(frame, "Present Perfect")
+        )
+        present_menu.add_command(
+            label=get_translation(self.language, "perfect_continuous"), 
+            command=lambda: self._generate_with_tense(frame, "Present Perfect Continuous")
+        )
+        
+        past_menu = tk.Menu(tense_menu, tearoff=0)
+        tense_menu.add_cascade(label=get_translation(self.language, "past"), menu=past_menu)
+        past_menu.add_command(
+            label=get_translation(self.language, "simple"), 
+            command=lambda: self._generate_with_tense(frame, "Past Simple")
+        )
+        past_menu.add_command(
+            label=get_translation(self.language, "continuous"), 
+            command=lambda: self._generate_with_tense(frame, "Past Continuous")
+        )
+        past_menu.add_command(
+            label=get_translation(self.language, "perfect"), 
+            command=lambda: self._generate_with_tense(frame, "Past Perfect")
+        )
+        past_menu.add_command(
+            label=get_translation(self.language, "perfect_continuous"), 
+            command=lambda: self._generate_with_tense(frame, "Past Perfect Continuous")
+        )
+        
+        future_menu = tk.Menu(tense_menu, tearoff=0)
+        tense_menu.add_cascade(label=get_translation(self.language, "future"), menu=future_menu)
+        future_menu.add_command(
+            label=get_translation(self.language, "simple"), 
+            command=lambda: self._generate_with_tense(frame, "Future Simple")
+        )
+        future_menu.add_command(
+            label=get_translation(self.language, "continuous"), 
+            command=lambda: self._generate_with_tense(frame, "Future Continuous")
+        )
+        future_menu.add_command(
+            label=get_translation(self.language, "perfect"), 
+            command=lambda: self._generate_with_tense(frame, "Future Perfect")
+        )
+        future_menu.add_command(
+            label=get_translation(self.language, "perfect_continuous"), 
+            command=lambda: self._generate_with_tense(frame, "Future Perfect Continuous")
+        )
+        
+        past_future_menu = tk.Menu(tense_menu, tearoff=0)
+        tense_menu.add_cascade(label=get_translation(self.language, "past_future"), menu=past_future_menu)
+        past_future_menu.add_command(
+            label=get_translation(self.language, "simple"), 
+            command=lambda: self._generate_with_tense(frame, "Past Future Simple")
+        )
+        past_future_menu.add_command(
+            label=get_translation(self.language, "continuous"), 
+            command=lambda: self._generate_with_tense(frame, "Past Future Continuous")
+        )
+        past_future_menu.add_command(
+            label=get_translation(self.language, "perfect"), 
+            command=lambda: self._generate_with_tense(frame, "Past Future Perfect")
+        )
+        past_future_menu.add_command(
+            label=get_translation(self.language, "perfect_continuous"), 
+            command=lambda: self._generate_with_tense(frame, "Past Future Perfect Continuous")
+        )
+        
         menu.add_separator()
         menu.add_command(
             label=get_translation(self.language, "delete"),
@@ -807,6 +892,58 @@ Keep the analysis concise and technical. Output in 1 line. Example format:
         
         # Create and show edit window
         EditSentenceWindow(self, word, sentence, self.api_service, self.language, frame)
+
+    def _generate_with_tense(self, frame, tense):
+        """Generate a sentence with a specified tense."""
+        if not self.api_service.server_connected:
+            messagebox.showwarning(
+                get_translation(self.language, "server_error_title"),
+                get_translation(self.language, "server_connection_guide")
+            )
+            return
+        
+        word = frame.text_widget.original_word
+        
+        # Get tense prompt template from settings
+        prompt_template = self.api_service.settings_service.get_settings("tense_prompt") if hasattr(self.api_service, 'settings_service') and self.api_service.settings_service else None
+        if prompt_template:
+            prompt = prompt_template.format(word=word, tense=tense)
+        else:
+            # Fallback to default
+            prompt = f"Create a simple sentence using the word '{word}' using {tense} tense. The sentence should be clear and educational."
+        
+        # Generate new sentence with the specified tense
+        new_sentence = self.api_service.generate_sentence(word, prompt)
+        
+        if new_sentence:
+            # Create masked sentence
+            masked_sentence = self._create_masked_sentence(word, new_sentence)
+            
+            # Update text widget
+            text_widget = frame.text_widget
+            text_widget.configure(state="normal")
+            text_widget.delete("1.0", tk.END)
+            
+            # Set the appropriate sentence based on visibility state
+            if hasattr(text_widget, 'word_visible') and text_widget.word_visible:
+                text_widget.insert("1.0", new_sentence)
+            else:
+                text_widget.insert("1.0", masked_sentence)
+            
+            # Update stored sentences
+            text_widget.original_sentence = new_sentence
+            text_widget.masked_sentence = masked_sentence
+            
+            # Remove analysis if it exists as the sentence has changed
+            if hasattr(text_widget, 'analysis'):
+                delattr(text_widget, 'analysis')
+            
+            # Readjust height
+            text_widget.see("end")
+            num_lines = text_widget.count("1.0", "end", "displaylines")[0]
+            text_widget.configure(height=max(2, num_lines))
+            
+            text_widget.configure(state="disabled")
 
 class AnalysisWindow(tk.Toplevel):
     def __init__(self, parent, word, sentence, api_service, language, text_widget):
@@ -917,7 +1054,17 @@ class AnalysisWindow(tk.Toplevel):
         if prompt_template:
             prompt = prompt_template.format(word=self.word, sentence=self.sentence)
         else:
-            prompt = f"Analyze the grammatical usage of '{self.word}' in this sentence: '{self.sentence}'"
+            # Use default analysis prompt if none is found
+            prompt = f"""Analyze the grammatical usage of '{self.word}' in this sentence: '{self.sentence}'
+Focus on:
+1. Tense (e.g., Present Simple, Past Perfect)
+2. Voice (Active/Passive)
+3. Mood (Indicative/Subjunctive)
+4. Function (e.g., Subject, Object, Modifier)
+
+Keep the analysis concise and technical. Output in 1 line. Example format:
+"Present Simple, Active Voice. Functions as the subject of the sentence." """
+        
         self.analysis = self.api_service.generate_sentence(self.word, prompt)
         
         if self.analysis:

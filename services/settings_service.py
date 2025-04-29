@@ -12,6 +12,7 @@ class SettingsService:
         self.settings = {}
         self.external_generate_prompt = None
         self.external_analysis_prompt = None
+        self.external_tense_prompt = None
         self.load_settings()
 
     
@@ -27,6 +28,8 @@ class SettingsService:
                         self.external_generate_prompt = self.settings.get('generate_prompt')
                     elif key == 'analysis_prompt':
                         self.external_analysis_prompt = self.settings.get('analysis_prompt')
+                    elif key == 'tense_prompt':
+                        self.external_tense_prompt = self.settings.get('tense_prompt')
 
                     if key not in self.settings:
                         self.settings[key] = value
@@ -46,6 +49,7 @@ class SettingsService:
         # Save the external prompts to the settings file
         self.settings['generate_prompt'] = self.external_generate_prompt
         self.settings['analysis_prompt'] = self.external_analysis_prompt
+        self.settings['tense_prompt'] = self.external_tense_prompt
 
         try:
             # Make a copy of settings and filter out excluded settings

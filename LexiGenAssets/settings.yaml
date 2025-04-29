@@ -1,5 +1,7 @@
-analysis_prompt: Repeat the sentence '{sentence}'
+analysis_prompt: null
 api_url: http://127.0.0.1:11434/api/generate
-generate_prompt: Repeat the word '{word}' three times
+generate_prompt: null
 language: English
 model: qwen2.5:3b
+tense_prompt: Create a simple sentence using the word '{word}' using {tense} tense.
+  The sentence should be clear and educational.
