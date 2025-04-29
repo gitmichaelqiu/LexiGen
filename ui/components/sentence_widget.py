@@ -978,6 +978,13 @@ class SentenceWidgetManager(ttk.LabelFrame):
 
 class AnalysisWindow(tk.Toplevel):
     def __init__(self, parent, word, sentence, api_service, language, text_widget):
+        if r'{word}' not in api_service.settings_service.get_settings("analysis_prompt") or r'{sentence}' not in api_service.settings_service.get_settings("analysis_prompt"):
+            messagebox.showerror(
+                get_translation(language, "error_title"),
+                get_translation(language, "invalid_prompt_format")
+            )
+            return
+
         super().__init__(parent)
         self.title(get_translation(language, "word_analysis"))
         self.geometry("600x400")
@@ -1083,13 +1090,6 @@ class AnalysisWindow(tk.Toplevel):
         # Get analysis prompt from settings
         prompt_template = self.api_service.settings_service.get_settings("analysis_prompt") if hasattr(self.api_service, 'settings_service') and self.api_service.settings_service else None
 
-        if r'{word}' not in prompt_template or r'{sentence}' not in prompt_template:
-            messagebox.showerror(
-                get_translation(self.language, "error_title"),
-                get_translation(self.language, "invalid_prompt_format")
-            )
-            return
-
         prompt = prompt_template.format(word=self.word, sentence=self.sentence)
         
         self.analysis = self.api_service.generate_sentence(self.word, prompt)
@@ -1101,6 +1101,7 @@ class AnalysisWindow(tk.Toplevel):
                 get_translation(self.language, "error_title"),
                 get_translation(self.language, "analysis_generation_failed")
             )
+            return
     
     def _regenerate_analysis(self):
         """Regenerate the analysis."""
