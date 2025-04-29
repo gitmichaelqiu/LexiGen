@@ -176,8 +176,18 @@ class UpdateService:
     def _download_thread(self):
         """Background thread for downloading the update"""
         try:
-            # Create a temporary file to download to
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
+            # Determine appropriate file extension based on URL
+            file_extension = ".zip"  # Default
+            if self.download_url:
+                if self.download_url.lower().endswith(".dmg"):
+                    file_extension = ".dmg"
+                elif self.download_url.lower().endswith(".exe"):
+                    file_extension = ".exe"
+                elif self.download_url.lower().endswith(".appimage"):
+                    file_extension = ".AppImage"
+                    
+            # Create a temporary file to download to with correct extension
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=file_extension)
             temp_file.close()
             self.downloaded_file = temp_file.name
             
@@ -268,14 +278,27 @@ class UpdateService:
             return
             
         try:
-            # Extract the update to a temporary directory
-            temp_dir = tempfile.mkdtemp()
+            # Determine the file type
+            file_extension = os.path.splitext(self.downloaded_file)[1].lower()
             
-            with zipfile.ZipFile(self.downloaded_file, 'r') as zip_ref:
-                zip_ref.extractall(temp_dir)
-            
-            # Determine executable path based on platform
-            self._install_update(temp_dir)
+            if file_extension == ".dmg" and platform.system().lower() == "darwin":
+                # For macOS DMG files
+                self._install_dmg_update()
+            elif file_extension == ".exe" and platform.system().lower() == "windows":
+                # For Windows installer EXE files
+                self._install_exe_update()
+            elif file_extension == ".zip":
+                # For ZIP files, extract and install
+                temp_dir = tempfile.mkdtemp()
+                with zipfile.ZipFile(self.downloaded_file, 'r') as zip_ref:
+                    zip_ref.extractall(temp_dir)
+                self._install_update(temp_dir)
+            elif file_extension == ".appimage" and platform.system().lower() != "windows":
+                # For Linux AppImage files
+                self._install_appimage_update()
+            else:
+                # Fallback for unknown file types - try to handle as executable
+                self._install_generic_executable()
             
         except Exception as e:
             messagebox.showerror(
@@ -310,31 +333,46 @@ class UpdateService:
                     app_bundle = os.path.join(root, dir_name)
                     break
             if app_bundle:
-                break
-        
-        if app_bundle:
-            # Start a script to replace the app bundle after we quit
-            self._run_mac_update_script(app_bundle)
+                # Start a script to replace the app bundle after we quit
+                self._run_mac_update_script(app_bundle)
         else:
             # No app bundle found, try generic update
             self._install_generic_update(extracted_path)
     
-    def _run_mac_update_script(self, new_app_path):
+    def _run_mac_update_script(self, new_app_path, mount_point=None):
         """Run a script to replace the app after we quit"""
         # Get current app path
-        current_app_path = os.path.dirname(os.path.dirname(sys.executable))
+        current_app_path = None
+        if getattr(sys, 'frozen', False):
+            # Running as frozen/packaged app
+            current_app_path = os.path.dirname(os.path.dirname(sys.executable))
+        else:
+            # Running as script, assume Python environment
+            current_app_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         
-        if not current_app_path.endswith(".app"):
-            # Not running from an app bundle, use generic update
-            self._install_generic_update(os.path.dirname(new_app_path))
-            return
+        target_path = None
+        if current_app_path.endswith(".app"):
+            # Using an app bundle, replace it
+            target_path = os.path.dirname(current_app_path)
+        else:
+            # Not using app bundle, use Applications folder
+            target_path = "/Applications"
         
-        # Create update script
+        # Create update script that will:
+        # 1. Wait for app to quit
+        # 2. Copy the new app to the target location
+        # 3. Unmount the DMG (if provided)
+        # 4. Launch the new app
+        unmount_command = f'hdiutil detach "{mount_point}" -force' if mount_point else ''
+        
         script_content = f"""#!/bin/bash
 sleep 2
-rm -rf "{current_app_path}"
-cp -R "{new_app_path}" "{os.path.dirname(current_app_path)}"
-open "{os.path.join(os.path.dirname(current_app_path), os.path.basename(new_app_path))}"
+if [ -d "{os.path.join(target_path, os.path.basename(new_app_path))}" ]; then
+    rm -rf "{os.path.join(target_path, os.path.basename(new_app_path))}"
+fi
+cp -R "{new_app_path}" "{target_path}/"
+{unmount_command}
+open "{os.path.join(target_path, os.path.basename(new_app_path))}"
 """
         
         # Write script to temp file
@@ -449,3 +487,114 @@ cd "{dest_dir}"
     def set_root(self, root):
         """Set the root window for the update service"""
         self.root = root
+
+    def _install_dmg_update(self):
+        """Handle installation from a DMG file on macOS"""
+        # Mount the DMG
+        mount_point = tempfile.mkdtemp()
+        mount_cmd = ["hdiutil", "attach", self.downloaded_file, "-mountpoint", mount_point, "-nobrowse"]
+        
+        try:
+            # Mount the DMG
+            subprocess.run(mount_cmd, check=True)
+            
+            # Look for .app bundles in the mounted DMG
+            app_bundle = None
+            for item in os.listdir(mount_point):
+                if item.endswith(".app"):
+                    app_bundle = os.path.join(mount_point, item)
+                    break
+            
+            if app_bundle:
+                # Found an app bundle, create install script
+                self._run_mac_update_script(app_bundle, mount_point)
+            else:
+                # No app bundle found, maybe there's a pkg installer
+                pkg_installer = None
+                for item in os.listdir(mount_point):
+                    if item.endswith(".pkg"):
+                        pkg_installer = os.path.join(mount_point, item)
+                        break
+                
+                if pkg_installer:
+                    # Run the pkg installer
+                    install_cmd = ["open", pkg_installer]
+                    subprocess.Popen(install_cmd)
+                    
+                    # Wait a bit, then exit the app
+                    if self.root:
+                        self.root.after(2000, self.root.destroy)
+                else:
+                    # Can't find anything to install
+                    raise Exception("No application or installer found in the DMG")
+        except Exception as e:
+            # Unmount and clean up in case of error
+            try:
+                subprocess.run(["hdiutil", "detach", mount_point, "-force"], check=False)
+            except:
+                pass
+            
+            # Re-raise the exception
+            raise e
+
+    def _install_exe_update(self):
+        """Handle installation from an EXE file on Windows"""
+        try:
+            # Run the installer directly
+            subprocess.Popen([self.downloaded_file])
+            
+            # Exit the app
+            if self.root:
+                self.root.after(500, self.root.destroy)
+            
+        except Exception as e:
+            # Try to run with shell=True as a fallback
+            try:
+                subprocess.Popen(self.downloaded_file, shell=True)
+                
+                # Exit the app
+                if self.root:
+                    self.root.after(500, self.root.destroy)
+            except:
+                # Re-raise the original exception if fallback also fails
+                raise e
+
+    def _install_appimage_update(self):
+        """Handle installation from an AppImage file on Linux"""
+        try:
+            # Create Applications directory in user's home if it doesn't exist
+            app_dir = os.path.join(os.path.expanduser('~'), "Applications")
+            os.makedirs(app_dir, exist_ok=True)
+            
+            # Copy the AppImage to Applications directory
+            target_path = os.path.join(app_dir, os.path.basename(self.downloaded_file))
+            shutil.copy2(self.downloaded_file, target_path)
+            
+            # Make it executable
+            os.chmod(target_path, os.stat(target_path).st_mode | 0o755)
+            
+            # Create script to launch the new version
+            launch_script = f"""#!/bin/bash
+            # Wait for the current application to exit
+            sleep 2
+            # Run the new version
+            {target_path}
+            """
+            
+            script_path = tempfile.mktemp(suffix='.sh')
+            with open(script_path, 'w') as f:
+                f.write(launch_script)
+            
+            # Make the script executable
+            os.chmod(script_path, 0o755)
+            
+            # Run the script
+            subprocess.Popen(['bash', script_path])
+            
+            # Exit the app
+            if self.root:
+                self.root.after(500, self.root.destroy)
+                
+        except Exception as e:
+            self._show_error(_("Failed to install update: ") + str(e))
+            raise e
