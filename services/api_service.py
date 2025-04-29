@@ -61,7 +61,7 @@ class APIService:
     def generate_sentence(self, word, prompt_template):
         if not self.server_connected:
             messagebox.showerror(
-                "Server Error",
+                get_translation(self.language, "server_error_title"),
                 get_translation(self.language, "server_connection_guide")
             )
             return None
@@ -92,13 +92,13 @@ class APIService:
                 
             except requests.exceptions.RequestException as e:
                 messagebox.showerror(
-                    "Error", 
+                    get_translation(self.language, "error_title"), 
                     get_translation(self.language, "generation_error_msg").format(error=str(e))
                 )
                 return None
             except Exception as e:
                 messagebox.showerror(
-                    "Error", 
+                    get_translation(self.language, "error_title"), 
                     get_translation(self.language, "unexpected_error_msg").format(error=str(e))
                 )
                 return None

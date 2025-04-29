@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
-from models.translations import get_translation
+from models.translations import get_translation, TRANSLATIONS
 from tkinter import filedialog, simpledialog, messagebox
 from docx import Document
 from docx.shared import Pt, RGBColor
@@ -9,6 +9,17 @@ import platform
 from nltk import word_tokenize
 import markdown
 import re
+
+# Add these keys to both English and Chinese translations
+for language in TRANSLATIONS:
+    if "regenerate_button" not in TRANSLATIONS[language]:
+        TRANSLATIONS[language]["regenerate_button"] = "↻"
+    if "menu_button" not in TRANSLATIONS[language]:
+        TRANSLATIONS[language]["menu_button"] = "⋮" 
+    if "checkmark" not in TRANSLATIONS[language]:
+        TRANSLATIONS[language]["checkmark"] = "✓"
+    if "progress_indicator" not in TRANSLATIONS[language]:
+        TRANSLATIONS[language]["progress_indicator"] = "{0}/{1}"
 
 class SentenceWidgetManager(ttk.LabelFrame):
     def __init__(self, parent, language, word_processor, api_service, on_sentences_changed=None):
@@ -172,7 +183,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
         
         regen_btn = ttk.Button(
             buttons_frame,
-            text="↻",
+            text=get_translation(self.language, "regenerate_button"),
             width=2,
             command=lambda w=original_word, f=frame: self._regenerate_sentence(w, f)
         )
@@ -181,7 +192,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
         # Create menu button
         menu_btn = ttk.Button(
             buttons_frame,
-            text="⋮",
+            text=get_translation(self.language, "menu_button"),
             width=2,
             command=lambda f=frame: self._show_menu(f)
         )
@@ -301,7 +312,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
                     
                     # Labels
                     ttk.Label(progress_frame, text=get_translation(self.language, "generating_analyses")).pack(pady=(0, 5))
-                    progress_label = ttk.Label(progress_frame, text="0/{0}".format(len(missing_analyses)))
+                    progress_label = ttk.Label(progress_frame, text=get_translation(self.language, "progress_indicator").format(0, len(missing_analyses)))
                     progress_label.pack(pady=(0, 5))
                     
                     # Progress bar
@@ -330,7 +341,7 @@ Keep the analysis concise and technical. Output in 1 line. Example format:
                         
                         # Update progress
                         progress_var.set((i / len(missing_analyses)) * 100)
-                        progress_label.configure(text="{0}/{1}".format(i, len(missing_analyses)))
+                        progress_label.configure(text=get_translation(self.language, "progress_indicator").format(i+1, len(missing_analyses)))
                         progress_window.update()
                         
                         # Generate analysis
@@ -343,7 +354,7 @@ Keep the analysis concise and technical. Output in 1 line. Example format:
                         
                         # Update progress again
                         progress_var.set(((i+1) / len(missing_analyses)) * 100)
-                        progress_label.configure(text="{0}/{1}".format(i+1, len(missing_analyses)))
+                        progress_label.configure(text=get_translation(self.language, "progress_indicator").format(i+1, len(missing_analyses)))
                         progress_window.update()
                     
                     # Close progress window
@@ -583,7 +594,7 @@ Keep the analysis concise and technical. Output in 1 line. Example format:
         for child in text_widget.master.winfo_children():
             if isinstance(child, ttk.Button) and child.cget("text") == get_translation(self.language, "copy"):
                 original_text = child.cget("text")
-                child.configure(text="✓")
+                child.configure(text=get_translation(self.language, "checkmark"))
                 
                 # Reset the button text after a short delay
                 def reset_text():
