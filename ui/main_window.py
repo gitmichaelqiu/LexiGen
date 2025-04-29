@@ -50,7 +50,7 @@ class MainWindow:
         
         # Initial setup (scheduled to run after UI is ready)
         self.root.after(100, self.initial_setup)
-        self.root.after(200, lambda: self.check_for_updates(show_message=True))
+        self.root.after(200, lambda: self.check_for_updates(show_message=False))
         
     def setup_ui(self):
         self.main_container = ttk.Frame(self.root, padding="10")

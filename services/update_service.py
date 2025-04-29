@@ -47,27 +47,26 @@ class UpdateService:
                 self.download_url = self._get_download_url(release_data)
                 
                 if self.latest_version > VERSION:
-                    if show_message:
-                        if auto_update and self.download_url:
-                            # Ask user if they want to update automatically
-                            if messagebox.askyesno(
-                                get_translation(self.language, "update_now_title"),
-                                get_translation(self.language, "update_now_msg").format(
-                                    version=self.latest_version,
-                                    current_version=VERSION
-                                )
-                            ):
-                                self._download_update()
-                        else:
-                            # Traditional approach - open browser to download page
-                            if messagebox.askyesno(
-                                get_translation(self.language, "update_available_title"),
-                                get_translation(self.language, "update_available_msg").format(
-                                    version=self.latest_version,
-                                    current_version=VERSION
-                                )
-                            ):
-                                webbrowser.open("https://github.com/gitmichaelqiu/LexiGen/releases/latest")
+                    if auto_update and self.download_url:
+                        # Ask user if they want to update automatically
+                        if messagebox.askyesno(
+                            get_translation(self.language, "update_now_title"),
+                            get_translation(self.language, "update_now_msg").format(
+                                version=self.latest_version,
+                                current_version=VERSION
+                            )
+                        ):
+                            self._download_update()
+                    else:
+                        # Traditional approach - open browser to download page
+                        if messagebox.askyesno(
+                            get_translation(self.language, "update_available_title"),
+                            get_translation(self.language, "update_available_msg").format(
+                                version=self.latest_version,
+                                current_version=VERSION
+                            )
+                        ):
+                            webbrowser.open("https://github.com/gitmichaelqiu/LexiGen/releases/latest")
                     return "new_version"
                 else:
                     if show_message:
@@ -77,18 +76,16 @@ class UpdateService:
                         )
                     return "up_to_date"
             else:
-                if show_message:
-                    messagebox.showerror(
-                        get_translation(self.language, "error_title"),
-                        get_translation(self.language, "update_check_error")
-                    )
-                return "error"
-        except Exception as e:
-            if show_message:
                 messagebox.showerror(
                     get_translation(self.language, "error_title"),
-                    get_translation(self.language, "update_error_msg").format(error=str(e))
+                    get_translation(self.language, "update_check_error")
                 )
+                return "error"
+        except Exception as e:
+            messagebox.showerror(
+                get_translation(self.language, "error_title"),
+                get_translation(self.language, "update_error_msg").format(error=str(e))
+            )
             return "error"
     
     def _get_download_url(self, release_data):
