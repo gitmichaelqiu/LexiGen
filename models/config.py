@@ -59,7 +59,3 @@ def get_translations_path():
 def get_settings_path():
     """Returns the path to the settings.yaml file."""
     return os.path.join(get_assets_path(), "settings.yaml")
-
-def get_prompt_path():
-    """Returns the path to the prompt.txt file."""
-    return os.path.join(get_assets_path(), "prompt.txt")
