@@ -1,4 +1,4 @@
-analysis_prompt: test
+analysis_prompt: null
 api_url: http://127.0.0.1:11434/api/generate
 generate_prompt: null
 language: English
