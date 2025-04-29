@@ -31,7 +31,7 @@ class SettingsService:
                     elif key == 'tense_prompt':
                         self.external_tense_prompt = self.settings.get('tense_prompt')
 
-                    if key not in self.settings:
+                    if key not in self.settings or key in ['generate_prompt', 'analysis_prompt', 'tense_prompt']:
                         self.settings[key] = value
             except Exception as e:
                 self._initialize_default_settings()

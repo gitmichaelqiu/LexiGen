@@ -51,7 +51,7 @@ class SettingsPanel(ttk.LabelFrame):
         
         ttk.Separator(self.status_labels_frame, orient='vertical').pack(side=tk.LEFT, padx=5, fill='y')
         
-        self.prompt_status_label = ttk.Label(self.status_labels_frame, text=get_translation(language, "using_custom_prompt"), foreground="green")
+        self.prompt_status_label = ttk.Label(self.status_labels_frame, text=get_translation(language, "using_default_prompt"), foreground="gray")
         self.prompt_status_label.pack(side=tk.LEFT, padx=5)
         
         # Buttons
@@ -79,7 +79,7 @@ class SettingsPanel(ttk.LabelFrame):
         self.model_var.trace_add('write', self._on_model_change)
         
         # Initialize prompt state
-        self.using_custom_prompt = True
+        self.using_custom_prompt = False
         self.update_prompt_status()
     
     def _on_language_change(self, event=None):
@@ -113,12 +113,14 @@ class SettingsPanel(ttk.LabelFrame):
             # Check if custom prompts exist in settings.yaml
             custom_generate_prompt = settings_service.external_generate_prompt
             custom_analysis_prompt = settings_service.external_analysis_prompt
+            custom_tense_prompt = settings_service.external_tense_prompt
             
             # Only switch to custom if values exist and are not empty
-            if custom_generate_prompt and custom_analysis_prompt:
+            if custom_generate_prompt or custom_analysis_prompt or custom_tense_prompt:
                 # Store current values in settings service
-                settings_service.settings["generate_prompt"] = custom_generate_prompt
-                settings_service.settings["analysis_prompt"] = custom_analysis_prompt
+                settings_service.settings["generate_prompt"] = custom_generate_prompt if custom_generate_prompt else DEFAULT_CONFIG["generate_prompt"]
+                settings_service.settings["analysis_prompt"] = custom_analysis_prompt if custom_analysis_prompt else DEFAULT_CONFIG["analysis_prompt"]
+                settings_service.settings["tense_prompt"] = custom_tense_prompt if custom_tense_prompt else DEFAULT_CONFIG["tense_prompt"]
             else:
                 # If no custom prompts, stay on default and don't toggle
                 self.using_custom_prompt = False
@@ -126,6 +128,7 @@ class SettingsPanel(ttk.LabelFrame):
             # Switch to default prompts
             settings_service.settings["generate_prompt"] = DEFAULT_CONFIG["generate_prompt"]
             settings_service.settings["analysis_prompt"] = DEFAULT_CONFIG["analysis_prompt"]
+            settings_service.settings["tense_prompt"] = DEFAULT_CONFIG["tense_prompt"]
         
         # Update the prompt status label
         self.update_prompt_status()

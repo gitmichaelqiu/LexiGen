@@ -1082,14 +1082,15 @@ class AnalysisWindow(tk.Toplevel):
         
         # Get analysis prompt from settings
         prompt_template = self.api_service.settings_service.get_settings("analysis_prompt") if hasattr(self.api_service, 'settings_service') and self.api_service.settings_service else None
-        prompt = prompt_template.format(word=self.word, sentence=self.sentence)
 
-        if r'{word}' not in prompt or r'{sentence}' not in prompt:
+        if r'{word}' not in prompt_template or r'{sentence}' not in prompt_template:
             messagebox.showerror(
                 get_translation(self.language, "error_title"),
                 get_translation(self.language, "invalid_prompt_format")
             )
             return
+
+        prompt = prompt_template.format(word=self.word, sentence=self.sentence)
         
         self.analysis = self.api_service.generate_sentence(self.word, prompt)
         
