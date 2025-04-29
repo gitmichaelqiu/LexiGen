@@ -657,10 +657,7 @@ Keep the analysis concise and technical. Output in 1 line. Example format:
             return
         
         # Generate new sentence
-        prompt = self.api_service.settings_service.get_settings("generate_prompt") if hasattr(self.api_service, 'settings_service') and self.api_service.settings_service else None
-        # If prompt is None, use default from config
-        if prompt is None:
-            prompt = "Create a simple sentence using the word '{word}'. The sentence should be clear and educational."
+        prompt = self.api_service.settings_service.get_settings("generate_prompt")
         new_sentence = self.api_service.generate_sentence(word, prompt)
         
         if new_sentence:
