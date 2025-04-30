@@ -111,14 +111,14 @@ class SettingsPanel(ttk.LabelFrame):
         
         if self.using_custom_prompt:
             # Check if custom prompts exist in settings.yaml
-            custom_generate_prompt = settings_service.external_generate_prompt
+            custom_generation_prompt = settings_service.external_generation_prompt
             custom_analysis_prompt = settings_service.external_analysis_prompt
             custom_tense_prompt = settings_service.external_tense_prompt
             
             # Only switch to custom if values exist and are not empty
-            if custom_generate_prompt or custom_analysis_prompt or custom_tense_prompt:
+            if custom_generation_prompt or custom_analysis_prompt or custom_tense_prompt:
                 # Store current values in settings service
-                settings_service.settings["generate_prompt"] = custom_generate_prompt if custom_generate_prompt else DEFAULT_CONFIG["generate_prompt"]
+                settings_service.settings["generation_prompt"] = custom_generation_prompt if custom_generation_prompt else DEFAULT_CONFIG["generation_prompt"]
                 settings_service.settings["analysis_prompt"] = custom_analysis_prompt if custom_analysis_prompt else DEFAULT_CONFIG["analysis_prompt"]
                 settings_service.settings["tense_prompt"] = custom_tense_prompt if custom_tense_prompt else DEFAULT_CONFIG["tense_prompt"]
             else:
@@ -126,7 +126,7 @@ class SettingsPanel(ttk.LabelFrame):
                 self.using_custom_prompt = False
         else:
             # Switch to default prompts
-            settings_service.settings["generate_prompt"] = DEFAULT_CONFIG["generate_prompt"]
+            settings_service.settings["generation_prompt"] = DEFAULT_CONFIG["generation_prompt"]
             settings_service.settings["analysis_prompt"] = DEFAULT_CONFIG["analysis_prompt"]
             settings_service.settings["tense_prompt"] = DEFAULT_CONFIG["tense_prompt"]
         

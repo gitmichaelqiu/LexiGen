@@ -171,7 +171,7 @@ class MainWindow:
         self.sentence_manager.update_texts(self.language)
     
     def generate_sentences(self, append=False):
-        prompt = self.settings_service.get_settings("generate_prompt")
+        prompt = self.settings_service.get_settings("generation_prompt")
 
         if r'{word}' not in prompt:
             messagebox.showerror(
