@@ -11,7 +11,6 @@ def main():
         app = MainWindow(root)
         root.mainloop()
     except Exception as e:
-        # Load default English translation since we're not initialized yet
         language = "English"
         load_translations()
         messagebox.showerror(

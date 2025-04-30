@@ -1,9 +1,0 @@
-build/
-dist/
-__pycache__
-*.pyc
-GitIgnoreAssets/
-file_version_info.txt
-lexigen_mac.spec
-lexigen_win.spec
-.gitignore

@@ -113,12 +113,14 @@ class SettingsPanel(ttk.LabelFrame):
             # Check if custom prompts exist in settings.yaml
             custom_generate_prompt = settings_service.external_generate_prompt
             custom_analysis_prompt = settings_service.external_analysis_prompt
+            custom_tense_prompt = settings_service.external_tense_prompt
             
             # Only switch to custom if values exist and are not empty
-            if custom_generate_prompt and custom_analysis_prompt:
+            if custom_generate_prompt or custom_analysis_prompt or custom_tense_prompt:
                 # Store current values in settings service
-                settings_service.settings["generate_prompt"] = custom_generate_prompt
-                settings_service.settings["analysis_prompt"] = custom_analysis_prompt
+                settings_service.settings["generate_prompt"] = custom_generate_prompt if custom_generate_prompt else DEFAULT_CONFIG["generate_prompt"]
+                settings_service.settings["analysis_prompt"] = custom_analysis_prompt if custom_analysis_prompt else DEFAULT_CONFIG["analysis_prompt"]
+                settings_service.settings["tense_prompt"] = custom_tense_prompt if custom_tense_prompt else DEFAULT_CONFIG["tense_prompt"]
             else:
                 # If no custom prompts, stay on default and don't toggle
                 self.using_custom_prompt = False
@@ -126,6 +128,7 @@ class SettingsPanel(ttk.LabelFrame):
             # Switch to default prompts
             settings_service.settings["generate_prompt"] = DEFAULT_CONFIG["generate_prompt"]
             settings_service.settings["analysis_prompt"] = DEFAULT_CONFIG["analysis_prompt"]
+            settings_service.settings["tense_prompt"] = DEFAULT_CONFIG["tense_prompt"]
         
         # Update the prompt status label
         self.update_prompt_status()
@@ -195,6 +198,10 @@ class SettingsPanel(ttk.LabelFrame):
         self.help_btn.configure(text=get_translation(language, "setup_help"))
         self.toggle_prompt_btn.configure(text=get_translation(language, "toggle_prompt"))
         
+        # Update direct update button if present
+        if hasattr(self, 'direct_update_btn'):
+            self.direct_update_btn.configure(text=get_translation(language, "update_now_title"))
+        
         # Update update button based on current state
         if hasattr(self, 'update_btn'):
             current_text = self.update_btn.cget("text")
@@ -207,9 +214,53 @@ class SettingsPanel(ttk.LabelFrame):
     
     def update_update_button(self, status):
         if status == "new_version":
-            self.update_btn.configure(text=get_translation(self.language, "new_version"), style="UpdateAvailable.TButton")
+            # When a new version is available, show only the direct update button
+            
+            # If the normal update button exists, hide it
+            if hasattr(self, 'update_btn') and self.update_btn.winfo_ismapped():
+                self.update_btn.pack_forget()
+            
+            # Add a direct update button if not already present
+            if not hasattr(self, 'direct_update_btn'):
+                self.direct_update_btn = ttk.Button(
+                    self.buttons_row, 
+                    text=get_translation(self.language, "update_now_title"),
+                    command=self._direct_update,
+                    style="UpdateAvailable.TButton"
+                )
+                self.direct_update_btn.pack(side=tk.LEFT, padx=5)
         elif status == "up_to_date":
-            self.update_btn.configure(text=get_translation(self.language, "up_to_date"), style="UpToDate.TButton")
+            # Change the regular update button to show it's up to date
+            self.update_btn.configure(
+                text=get_translation(self.language, "up_to_date"), 
+                style="UpToDate.TButton"
+            )
+            # Remove direct update button if it exists
+            self._remove_direct_update_btn()
+            
+            # Make sure the regular update button is visible
+            if hasattr(self, 'update_btn') and not self.update_btn.winfo_ismapped():
+                self.update_btn.pack(side=tk.LEFT, padx=5)
         else:
-            self.update_btn.configure(text=get_translation(self.language, "check_updates"), style="Update.TButton")
-        self.update_btn.pack(side=tk.LEFT, padx=5)
+            # Change back to regular check for updates button
+            self.update_btn.configure(
+                text=get_translation(self.language, "check_updates"), 
+                style="Update.TButton"
+            )
+            # Remove direct update button if it exists
+            self._remove_direct_update_btn()
+            
+            # Make sure the regular update button is visible
+            if hasattr(self, 'update_btn') and not self.update_btn.winfo_ismapped():
+                self.update_btn.pack(side=tk.LEFT, padx=5)
+    
+    def _direct_update(self):
+        """Trigger a direct update download"""
+        # Call the update service with auto_update=True and force show_message=True
+        self.main_window.update_service.check_for_updates(show_message=True, auto_update=True)
+    
+    def _remove_direct_update_btn(self):
+        """Remove the direct update button if it exists"""
+        if hasattr(self, 'direct_update_btn'):
+            self.direct_update_btn.destroy()
+            delattr(self, 'direct_update_btn')

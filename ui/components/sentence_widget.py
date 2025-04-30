@@ -167,14 +167,16 @@ class SentenceWidgetManager(ttk.LabelFrame):
         show_btn = ttk.Button(
             buttons_frame,
             text=get_translation(self.language, "show"),
-            command=lambda: self._toggle_word(text_widget, show_btn)
+            command=lambda: self._toggle_word(text_widget, show_btn),
+            name="show_button"
         )
         show_btn.pack(side=tk.LEFT, padx=(0, 2))
         
         copy_btn = ttk.Button(
             buttons_frame,
             text=get_translation(self.language, "copy"),
-            command=lambda: self._copy_sentence(text_widget)
+            command=lambda: self._copy_sentence(text_widget),
+            name="copy_button"
         )
         copy_btn.pack(side=tk.LEFT, padx=(0, 2))
         
@@ -185,7 +187,8 @@ class SentenceWidgetManager(ttk.LabelFrame):
             buttons_frame,
             text=get_translation(self.language, "regenerate_button"),
             width=2,
-            command=lambda w=original_word, f=frame: self._regenerate_sentence(w, f)
+            command=lambda w=original_word, f=frame: self._regenerate_sentence(w, f),
+            name="regen_button"
         )
         regen_btn.pack(side=tk.LEFT, padx=(0, 2))
         
@@ -194,7 +197,8 @@ class SentenceWidgetManager(ttk.LabelFrame):
             buttons_frame,
             text=get_translation(self.language, "menu_button"),
             width=2,
-            command=lambda f=frame: self._show_menu(f)
+            command=lambda f=frame: self._show_menu(f),
+            name="menu_button"
         )
         menu_btn.pack(side=tk.LEFT)
         
@@ -297,6 +301,12 @@ class SentenceWidgetManager(ttk.LabelFrame):
                     )
                     # Continue without analyses
                     include_analysis = False
+                elif r'{word}' not in self.api_service.settings_service.get_settings("analysis_prompt") or r'{sentence}' not in self.api_service.settings_service.get_settings("analysis_prompt"):
+                    messagebox.showerror(
+                        get_translation(self.language, "error_title"),
+                        get_translation(self.language, "invalid_prompt_format")
+                    )
+                    return
                 else:
                     # Create progress dialog
                     progress_window = tk.Toplevel(self)
@@ -323,17 +333,14 @@ class SentenceWidgetManager(ttk.LabelFrame):
                     # Update progress
                     progress_window.update()
                     
-                    # Generate analyses for all sentences
-                    prompt = """Analyze the grammatical usage of '{word}' in this sentence: '{sentence}'
-Focus on:
-1. Tense (e.g., Present Simple, Past Perfect)
-2. Voice (Active/Passive)
-3. Mood (Indicative/Subjunctive)
-4. Function (e.g., Subject, Object, Modifier)
+                    prompt = self.api_service.settings_service.get_settings("analysis_prompt")
 
-Keep the analysis concise and technical. Output in 1 line. Example format:
-"Present Simple, Active Voice. Functions as the subject of the sentence." """
-                    
+                    if r'{word}' not in prompt or r'{sentence}' not in prompt:
+                        messagebox.showerror(
+                            get_translation(self.language, "error_title"),
+                            get_translation(self.language, "invalid_prompt_format")
+                        )
+                        return
                     # Generate analyses one by one
                     for i, frame in enumerate(missing_analyses):
                         word = frame.text_widget.original_word
@@ -657,7 +664,15 @@ Keep the analysis concise and technical. Output in 1 line. Example format:
             return
         
         # Generate new sentence
-        prompt = self.api_service.settings_service.get_settings("generate_prompt") if hasattr(self.api_service, 'settings_service') and self.api_service.settings_service else None
+        prompt = self.api_service.settings_service.get_settings("generate_prompt")
+
+        if r'{word}' not in prompt:
+            messagebox.showerror(
+                get_translation(self.language, "error_title"),
+                get_translation(self.language, "invalid_prompt_format")
+            )
+            return
+
         new_sentence = self.api_service.generate_sentence(word, prompt)
         
         if new_sentence:
@@ -709,20 +724,42 @@ Keep the analysis concise and technical. Output in 1 line. Example format:
         
         # Update individual sentence widgets
         for frame in self.sentence_widgets:
-            if frame.winfo_exists():
-                # Update show/hide button for each sentence
-                if hasattr(frame.text_widget, 'show_button'):
-                    if frame.text_widget.word_visible:
-                        frame.text_widget.show_button.configure(text=get_translation(language, "hide"))
-                    else:
-                        frame.text_widget.show_button.configure(text=get_translation(language, "show"))
+            if not frame.winfo_exists():
+                continue
+            
+            # Update show/hide button based on current visibility state
+            if hasattr(frame.text_widget, 'show_button'):
+                if frame.text_widget.word_visible:
+                    frame.text_widget.show_button.configure(text=get_translation(language, "hide"))
+                else:
+                    frame.text_widget.show_button.configure(text=get_translation(language, "show"))
+            
+            # Find the buttons frame - typically the frame grid positioned at column 2
+            buttons_frame = None
+            for child in frame.winfo_children():
+                if isinstance(child, ttk.Frame) and child.grid_info().get('column') == 2:
+                    buttons_frame = child
+                    break
                 
-                # Update other buttons in each sentence frame
-                for child in frame.winfo_children():
-                    if isinstance(child, ttk.Button):
-                        current_text = child.cget("text")
-                        if current_text in ["Copy", "复制", get_translation(self.language, "copy")]:
-                            child.configure(text=get_translation(language, "copy"))
+            if not buttons_frame:
+                continue
+            
+            # Update all buttons in the frame
+            for button in buttons_frame.winfo_children():
+                if not isinstance(button, ttk.Button):
+                    continue
+                
+                # Use button names to identify them
+                button_name = str(button).split(".")[-1]
+                
+                if "copy_button" in button_name:
+                    button.configure(text=get_translation(language, "copy"))
+                    
+                elif "regen_button" in button_name:
+                    button.configure(text=get_translation(language, "regenerate_button"))
+                    
+                elif "menu_button" in button_name:
+                    button.configure(text=get_translation(language, "menu_button"))
 
     def _show_menu(self, frame):
         """Show the menu for a sentence frame."""
@@ -746,6 +783,126 @@ Keep the analysis concise and technical. Output in 1 line. Example format:
             label=get_translation(self.language, "edit"),
             command=lambda: self._edit_sentence(frame)
         )
+        
+        # Add Designate Tense submenu
+        tense_menu = tk.Menu(menu, tearoff=0)
+        menu.add_cascade(label=get_translation(self.language, "designate_tense"), menu=tense_menu)
+        
+        # Add tense options
+        present_menu = tk.Menu(tense_menu, tearoff=0)
+        tense_menu.add_cascade(label=get_translation(self.language, "present"), menu=present_menu)
+        present_menu.add_command(
+            label=get_translation(self.language, "simple"),
+            command=lambda: self._generate_with_tense(frame, "Present Simple")
+        )
+        present_menu.add_command(
+            label=get_translation(self.language, "continuous"), 
+            command=lambda: self._generate_with_tense(frame, "Present Continuous")
+        )
+        present_menu.add_command(
+            label=get_translation(self.language, "perfect"), 
+            command=lambda: self._generate_with_tense(frame, "Present Perfect")
+        )
+        present_menu.add_command(
+            label=get_translation(self.language, "perfect_continuous"), 
+            command=lambda: self._generate_with_tense(frame, "Present Perfect Continuous")
+        )
+        
+        past_menu = tk.Menu(tense_menu, tearoff=0)
+        tense_menu.add_cascade(label=get_translation(self.language, "past"), menu=past_menu)
+        past_menu.add_command(
+            label=get_translation(self.language, "simple"), 
+            command=lambda: self._generate_with_tense(frame, "Past Simple")
+        )
+        past_menu.add_command(
+            label=get_translation(self.language, "continuous"), 
+            command=lambda: self._generate_with_tense(frame, "Past Continuous")
+        )
+        past_menu.add_command(
+            label=get_translation(self.language, "perfect"), 
+            command=lambda: self._generate_with_tense(frame, "Past Perfect")
+        )
+        past_menu.add_command(
+            label=get_translation(self.language, "perfect_continuous"), 
+            command=lambda: self._generate_with_tense(frame, "Past Perfect Continuous")
+        )
+        
+        future_menu = tk.Menu(tense_menu, tearoff=0)
+        tense_menu.add_cascade(label=get_translation(self.language, "future"), menu=future_menu)
+        future_menu.add_command(
+            label=get_translation(self.language, "simple"), 
+            command=lambda: self._generate_with_tense(frame, "Future Simple")
+        )
+        future_menu.add_command(
+            label=get_translation(self.language, "continuous"), 
+            command=lambda: self._generate_with_tense(frame, "Future Continuous")
+        )
+        future_menu.add_command(
+            label=get_translation(self.language, "perfect"), 
+            command=lambda: self._generate_with_tense(frame, "Future Perfect")
+        )
+        future_menu.add_command(
+            label=get_translation(self.language, "perfect_continuous"), 
+            command=lambda: self._generate_with_tense(frame, "Future Perfect Continuous")
+        )
+        
+        past_future_menu = tk.Menu(tense_menu, tearoff=0)
+        tense_menu.add_cascade(label=get_translation(self.language, "past_future"), menu=past_future_menu)
+        past_future_menu.add_command(
+            label=get_translation(self.language, "simple"), 
+            command=lambda: self._generate_with_tense(frame, "Past Future Simple")
+        )
+        past_future_menu.add_command(
+            label=get_translation(self.language, "continuous"), 
+            command=lambda: self._generate_with_tense(frame, "Past Future Continuous")
+        )
+        past_future_menu.add_command(
+            label=get_translation(self.language, "perfect"), 
+            command=lambda: self._generate_with_tense(frame, "Past Future Perfect")
+        )
+        past_future_menu.add_command(
+            label=get_translation(self.language, "perfect_continuous"), 
+            command=lambda: self._generate_with_tense(frame, "Past Future Perfect Continuous")
+        )
+        
+        # Subjunctive Mood submenu
+        subjunctive_menu = tk.Menu(tense_menu, tearoff=0)
+        tense_menu.add_cascade(label=get_translation(self.language, "subjunctive_mood"), menu=subjunctive_menu)
+        subjunctive_menu.add_command(
+            label=get_translation(self.language, "present"),
+            command=lambda: self._generate_with_tense(frame, "Present Subjunctive Mood")
+        )
+        subjunctive_menu.add_command(
+            label=get_translation(self.language, "past"),
+            command=lambda: self._generate_with_tense(frame, "Past Subjunctive Mood")
+        )
+        
+        # Conditional submenu
+        conditional_menu = tk.Menu(tense_menu, tearoff=0)
+        tense_menu.add_cascade(label=get_translation(self.language, "conditional"), menu=conditional_menu)
+        conditional_menu.add_command(
+            label=get_translation(self.language, "zero_conditional"),
+            command=lambda: self._generate_with_tense(frame, "Zero Conditional")
+        )
+        conditional_menu.add_command(
+            label=get_translation(self.language, "first_conditional"),
+            command=lambda: self._generate_with_tense(frame, "First Conditional")
+        )
+        conditional_menu.add_command(
+            label=get_translation(self.language, "second_conditional"),
+            command=lambda: self._generate_with_tense(frame, "Second Conditional")
+        )
+        conditional_menu.add_command(
+            label=get_translation(self.language, "third_conditional"),
+            command=lambda: self._generate_with_tense(frame, "Third Conditional")
+        )
+
+        # Imperative Mood submenu
+        tense_menu.add_command(
+            label=get_translation(self.language, "imperative_mood"),
+            command=lambda: self._generate_with_tense(frame, "Imperative Mood")
+        )
+        
         menu.add_separator()
         menu.add_command(
             label=get_translation(self.language, "delete"),
@@ -808,8 +965,70 @@ Keep the analysis concise and technical. Output in 1 line. Example format:
         # Create and show edit window
         EditSentenceWindow(self, word, sentence, self.api_service, self.language, frame)
 
+    def _generate_with_tense(self, frame, tense):
+        """Generate a sentence with a specified tense."""
+        if not self.api_service.server_connected:
+            messagebox.showwarning(
+                get_translation(self.language, "server_error_title"),
+                get_translation(self.language, "server_connection_guide")
+            )
+            return
+        
+        word = frame.text_widget.original_word
+        
+        # Get tense prompt template from settings
+        prompt_template = self.api_service.settings_service.get_settings("tense_prompt")
+        try:
+            prompt = prompt_template.format(word=word, tense=tense)
+        except Exception as e:
+            messagebox.showerror(
+                get_translation(self.language, "error_title"),
+                get_translation(self.language, "invalid_prompt_format").format(error=str(e))
+            )
+            return
+        
+        # Generate new sentence with the specified tense
+        new_sentence = self.api_service.generate_sentence(word, prompt)
+        
+        if new_sentence:
+            # Create masked sentence
+            masked_sentence = self._create_masked_sentence(word, new_sentence)
+            
+            # Update text widget
+            text_widget = frame.text_widget
+            text_widget.configure(state="normal")
+            text_widget.delete("1.0", tk.END)
+            
+            # Set the appropriate sentence based on visibility state
+            if hasattr(text_widget, 'word_visible') and text_widget.word_visible:
+                text_widget.insert("1.0", new_sentence)
+            else:
+                text_widget.insert("1.0", masked_sentence)
+            
+            # Update stored sentences
+            text_widget.original_sentence = new_sentence
+            text_widget.masked_sentence = masked_sentence
+            
+            # Remove analysis if it exists as the sentence has changed
+            if hasattr(text_widget, 'analysis'):
+                delattr(text_widget, 'analysis')
+            
+            # Readjust height
+            text_widget.see("end")
+            num_lines = text_widget.count("1.0", "end", "displaylines")[0]
+            text_widget.configure(height=max(2, num_lines))
+            
+            text_widget.configure(state="disabled")
+
 class AnalysisWindow(tk.Toplevel):
     def __init__(self, parent, word, sentence, api_service, language, text_widget):
+        if r'{word}' not in api_service.settings_service.get_settings("analysis_prompt") or r'{sentence}' not in api_service.settings_service.get_settings("analysis_prompt"):
+            messagebox.showerror(
+                get_translation(language, "error_title"),
+                get_translation(language, "invalid_prompt_format")
+            )
+            return
+
         super().__init__(parent)
         self.title(get_translation(language, "word_analysis"))
         self.geometry("600x400")
@@ -914,10 +1133,9 @@ class AnalysisWindow(tk.Toplevel):
         
         # Get analysis prompt from settings
         prompt_template = self.api_service.settings_service.get_settings("analysis_prompt") if hasattr(self.api_service, 'settings_service') and self.api_service.settings_service else None
-        if prompt_template:
-            prompt = prompt_template.format(word=self.word, sentence=self.sentence)
-        else:
-            prompt = f"Analyze the grammatical usage of '{self.word}' in this sentence: '{self.sentence}'"
+
+        prompt = prompt_template.format(word=self.word, sentence=self.sentence)
+        
         self.analysis = self.api_service.generate_sentence(self.word, prompt)
         
         if self.analysis:
@@ -927,6 +1145,7 @@ class AnalysisWindow(tk.Toplevel):
                 get_translation(self.language, "error_title"),
                 get_translation(self.language, "analysis_generation_failed")
             )
+            return
     
     def _regenerate_analysis(self):
         """Regenerate the analysis."""

@@ -65,7 +65,7 @@ class APIService:
                 get_translation(self.language, "server_connection_guide")
             )
             return None
-        
+
         prompt = prompt_template.format(word=word)
         
         max_attempts = 3

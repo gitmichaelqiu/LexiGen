@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import ttk, scrolledtext, messagebox
 from models.config import VERSION, DEFAULT_CONFIG
 from models.translations import load_translations, get_translation
 from models.word_processor import WordProcessor
@@ -33,6 +33,8 @@ class MainWindow:
         
         self.document_service = DocumentService(self.language)
         self.update_service = UpdateService(self.language)
+        # Set root window for the update service
+        self.update_service.set_root(self.root)
         
         # Load translations
         self.available_languages = load_translations()
@@ -48,7 +50,7 @@ class MainWindow:
         
         # Initial setup (scheduled to run after UI is ready)
         self.root.after(100, self.initial_setup)
-        self.root.after(200, lambda: self.check_for_updates(show_message=True))
+        self.root.after(200, lambda: self.check_for_updates(show_message=False))
         
     def setup_ui(self):
         self.main_container = ttk.Frame(self.root, padding="10")
@@ -169,6 +171,15 @@ class MainWindow:
         self.sentence_manager.update_texts(self.language)
     
     def generate_sentences(self, append=False):
+        prompt = self.settings_service.get_settings("generate_prompt")
+
+        if r'{word}' not in prompt:
+            messagebox.showerror(
+                get_translation(self.language, "error_title"),
+                get_translation(self.language, "invalid_prompt_format")
+            )
+            return
+
         words = [word.strip().lower() for word in self.word_input.get("1.0", tk.END).strip().split(",")]
         words = [w for w in words if w]
         
@@ -195,7 +206,6 @@ class MainWindow:
         sentences_generated = 0
         
         for i, word in enumerate(words):
-            prompt = self.settings_service.get_settings("generate_prompt")
             sentence = self.api_service.generate_sentence(word, prompt)
             if sentence:
                 self.sentence_manager.add_sentence(word, sentence)
@@ -219,7 +229,7 @@ class MainWindow:
                     self.append_btn.configure(state="normal")
     
     def check_for_updates(self, show_message=True):
-        result = self.update_service.check_for_updates(show_message)
+        result = self.update_service.check_for_updates(show_message, auto_update=True)
         self.settings_panel.update_update_button(result)
 
     def on_sentences_changed(self, has_sentences):
