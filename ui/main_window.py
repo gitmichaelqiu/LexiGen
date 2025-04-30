@@ -61,6 +61,9 @@ class MainWindow:
         # Setup UI
         self.setup_ui()
         
+        # Setup keyboard shortcuts
+        self._setup_keyboard_shortcuts()
+        
         # Immediately check server status (not waiting for the scheduled checks)
         self.api_service.check_server_status(show_message=False)
         
@@ -70,6 +73,38 @@ class MainWindow:
         # Initial setup (scheduled to run after UI is ready)
         self.root.after(100, self.initial_setup)
         self.root.after(200, lambda: self.check_for_updates(show_message=False))
+        
+    def _setup_keyboard_shortcuts(self):
+        """Setup keyboard shortcuts for various actions"""
+        # Get platform-specific modifier key
+        modifier = "Command" if sys.platform == "darwin" else "Control"
+        
+        # Bind Enter in word input to append/generate
+        self.word_input.bind("<Return>", self._handle_enter_key)
+        
+        # Bind Ctrl/Cmd + Enter to generate
+        self.word_input.bind(f"<{modifier}-Return>", lambda event: self.generate_sentences(append=False))
+        
+        # Bind Ctrl/Cmd + E to export
+        self.root.bind(f"<{modifier}-e>", lambda event: self.sentence_manager.export_docx())
+        
+        # Bind Ctrl/Cmd + / to show/hide all
+        self.root.bind(f"<{modifier}-slash>", lambda event: self.sentence_manager.show_all_words())
+    
+    def _handle_enter_key(self, event):
+        """Handle Enter key in word input - append or generate based on sentences state"""
+        # Check if there are sentences already
+        has_sentences = len(self.sentence_manager.sentence_widgets) > 0
+        
+        if has_sentences:
+            # If there are sentences, append
+            self.generate_sentences(append=True)
+        else:
+            # If no sentences, generate
+            self.generate_sentences(append=False)
+        
+        # Prevent default behavior
+        return "break"
         
     def setup_ui(self):
         self.main_container = ttk.Frame(self.root, padding="10")
