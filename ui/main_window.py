@@ -361,7 +361,11 @@ class MainWindow:
         """Show dialog for entering context."""
         dialog = tk.Toplevel(self.root)
         dialog.title(get_translation(self.language, "context"))
-        dialog.geometry("400x200")
+        width = 400
+        height = 200
+        x = (dialog.winfo_screenwidth() // 2) - (width // 2)
+        y = (dialog.winfo_screenheight() // 2) - (height // 2)
+        dialog.geometry(f"{width}x{height}+{x}+{y}")
         dialog.transient(self.root)
         dialog.grab_set()
         
@@ -390,11 +394,3 @@ class MainWindow:
                   command=save_context).pack(side=tk.LEFT)
         ttk.Button(buttons_frame, text=get_translation(self.language, "cancel"), 
                   command=dialog.destroy).pack(side=tk.RIGHT)
-        
-        # Center the dialog
-        dialog.update_idletasks()
-        width = dialog.winfo_width()
-        height = dialog.winfo_height()
-        x = (dialog.winfo_screenwidth() // 2) - (width // 2)
-        y = (dialog.winfo_screenheight() // 2) - (height // 2)
-        dialog.geometry(f"{width}x{height}+{x}+{y}")
