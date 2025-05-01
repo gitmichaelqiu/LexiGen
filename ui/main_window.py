@@ -18,8 +18,13 @@ class MainWindow:
     def __init__(self, root):
         self.root = root
         self.root.title("LexiGen")
-        self.root.geometry("1100x800")
-        
+
+        width = 1100
+        height = 800
+        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.root.winfo_screenheight() // 2) - (height // 2)
+        self.root.geometry(f"{width}x{height}+{x}+{y}")
+
         if sys.platform == 'win32':
             # Add window icon
             try:
@@ -83,13 +88,16 @@ class MainWindow:
         self.word_input.bind("<Return>", self._handle_enter_key)
         
         # Bind Ctrl/Cmd + Enter to generate
-        self.word_input.bind(f"<{modifier}-Return>", lambda event: self.generate_sentences(append=False))
+        self.root.bind(f"<{modifier}-Return>", lambda event: self.generate_sentences(append=False))
         
         # Bind Ctrl/Cmd + E to export
         self.root.bind(f"<{modifier}-e>", lambda event: self.sentence_manager.export_docx())
         
         # Bind Ctrl/Cmd + / to show/hide all
         self.root.bind(f"<{modifier}-slash>", lambda event: self.sentence_manager.show_all_words())
+        
+        # Bind Ctrl/Cmd + T to toggle context window
+        self.root.bind(f"<{modifier}-t>", self._toggle_context_window)
     
     def _handle_enter_key(self, event):
         """Handle Enter key in word input - append or generate based on sentences state"""
@@ -357,40 +365,57 @@ class MainWindow:
         self.settings_service.save_settings()
         self.root.destroy()
 
+    def _toggle_context_window(self, event=None):
+        """Toggle the context window - open if closed, save and close if open."""
+        if hasattr(self, '_context_dialog') and self._context_dialog.winfo_exists():
+            # Window is open, save and close it
+            self._save_context()
+            self._context_dialog.destroy()
+        else:
+            # Window is not open, open it
+            self._show_context_dialog()
+    
     def _show_context_dialog(self):
         """Show dialog for entering context."""
-        dialog = tk.Toplevel(self.root)
-        dialog.title(get_translation(self.language, "context"))
-        width = 400
-        height = 200
-        x = (dialog.winfo_screenwidth() // 2) - (width // 2)
-        y = (dialog.winfo_screenheight() // 2) - (height // 2)
-        dialog.geometry(f"{width}x{height}+{x}+{y}")
-        dialog.transient(self.root)
-        dialog.grab_set()
+        self._context_dialog = tk.Toplevel(self.root)
+        self._context_dialog.title(get_translation(self.language, "context"))
+        width = 500
+        height = 300
+        x = (self._context_dialog.winfo_screenwidth() // 2) - (width // 2)
+        y = (self._context_dialog.winfo_screenheight() // 2) - (height // 2)
+        self._context_dialog.geometry(f"{width}x{height}+{x}+{y}")
+        self._context_dialog.transient(self.root)
+        self._context_dialog.grab_set()
         
         # Create main frame
-        main_frame = ttk.Frame(dialog, padding="10")
+        main_frame = ttk.Frame(self._context_dialog, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
         
         # Context label and text widget
         ttk.Label(main_frame, text=get_translation(self.language, "enter_context")).pack(anchor=tk.W)
-        context_text = scrolledtext.ScrolledText(main_frame, height=5, width=40)
-        context_text.pack(fill=tk.BOTH, expand=True, pady=(5, 10))
+        self._context_text = scrolledtext.ScrolledText(main_frame, height=5, width=40)
+        self._context_text.pack(fill=tk.BOTH, expand=True, pady=(5, 10))
+        
+        # Load existing context if any
+        if hasattr(self, 'context') and self.context:
+            self._context_text.insert("1.0", self.context)
         
         # Buttons frame
         buttons_frame = ttk.Frame(main_frame)
         buttons_frame.pack(fill=tk.X)
         
-        def save_context():
-            context = context_text.get("1.0", tk.END).strip()
+        ttk.Button(buttons_frame, text=get_translation(self.language, "save"), 
+                  command=self._save_context).pack(side=tk.LEFT)
+        ttk.Button(buttons_frame, text=get_translation(self.language, "cancel"), 
+                  command=self._context_dialog.destroy).pack(side=tk.RIGHT)
+    
+    def _save_context(self):
+        """Save the current context and close the dialog."""
+        if hasattr(self, '_context_text'):
+            context = self._context_text.get("1.0", tk.END).strip()
             if context:
                 self.context = context
             else:
                 self.context = None
-            dialog.destroy()
-        
-        ttk.Button(buttons_frame, text=get_translation(self.language, "save"), 
-                  command=save_context).pack(side=tk.LEFT)
-        ttk.Button(buttons_frame, text=get_translation(self.language, "cancel"), 
-                  command=dialog.destroy).pack(side=tk.RIGHT)
+            if hasattr(self, '_context_dialog'):
+                self._context_dialog.destroy()
