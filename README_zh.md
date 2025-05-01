@@ -13,14 +13,42 @@
 </div>
 
 
-
 <img width="1318" alt="Screenshot 2025-04-16 at 21 32 15" src="https://github.com/user-attachments/assets/c85c0ce1-dd8f-40f0-975a-e581a5968373" />
-
 
 
 ## 🎯 概述
 
 LexiGen 是一款 **开源** 的首字母填空生成器，**零成本** 使用本地 Ollama AI。
+
+## 🤩 功能
+
+### 生成句子
+
+输入单词，逗号分隔:
+
+- 点按"生成"或使用"Ctrl/Cmd + Enter"清空已生成句子并生成新句子
+- 点按"添加"或使用"Enter"保留已生成句子并添加新句子
+
+### 显示/隐藏答案
+
+点按"显示/隐藏"，"显示/隐藏全部"或"Ctrl/Cmd + /"以显示/隐藏句子答案
+
+### 重新生成句子
+
+对生成的句子不满意？使用"↻"重新生成
+
+### 句子菜单
+
+点击句子旁的"⋮"以展开菜单，你可以:
+
+- **上移/下移**: 调整句子顺序
+- **分析**: 分析单词在句子中的成分作用
+- **编辑**: 手动编辑句子
+- **指定**: 指定句子的时态/语气, 支持:
+  - [现在，过去，将来，过去将来] x [一般时，进行时，完成式，完成进行时]
+  - 虚拟语气 [现在, 过去]
+  - 条件句 [零条件句, 第一条件句, 第二条件句, 第三条件句]
+  - 祈使句
 
 ## 🚀 下载安装
 
@@ -28,7 +56,7 @@ LexiGen 是一款 **开源** 的首字母填空生成器，**零成本** 使用�
 
 1. 安装 [Ollama](https://ollama.com)
 2. 启动 Ollama 应用程序
-3. 打开终端（Windows：按 `Windows + R`，然后输入 `cmd`），并安装一个模型（推荐 `qwen2.5:3b`（质量更高，占用1.3GB） 或 `qwen2.5:0.5b`（模型更小，占用500MB）)：
+3. 打开终端 (Windows：按 `Windows + R`，然后输入 `cmd`)，并安装一个模型 (推荐 `qwen2.5:3b`(质量更高，占用1.3GB) 或 `qwen2.5:0.5b` (模型更小，占用500MB)):
 
   ```bash
   ollama pull qwen2.5:3b
@@ -36,7 +64,7 @@ LexiGen 是一款 **开源** 的首字母填空生成器，**零成本** 使用�
 
 ### 安装
 
-1. 从 [GitHub](https://github.com/yourusername/lexigen/releases) 或 [蓝奏云盘](https://wwtm.lanzouq.com/b00uyomyxe) (密码：8hpe) 下载
+1. 从 [GitHub](https://github.com/gitmichaelqiu/LexiGen/releases/) 或 [蓝奏云盘](https://wwtm.lanzouq.com/b00uyomyxe) (密码：8hpe) 下载
 2. 选择您平台的对应版本
 3. 启动 LexiGen
 
@@ -44,7 +72,7 @@ LexiGen 是一款 **开源** 的首字母填空生成器，**零成本** 使用�
 
 ## 💡 自定义
 
-- 自定义 `LexiGenAssets/prompt.txt` 中的prompt，`{word}` 是您输入单词的占位符
+你可以自定义提示词！查看指南 [自定义提示词](https://gitmichaelqiu.github.io/my-projects/lexigen/customize-prompts-zh/)。
 
 ## 📂 文件结构
 
@@ -64,7 +92,7 @@ LexiGen 是一款 **开源** 的首字母填空生成器，**零成本** 使用�
 | 生成缓慢 | 检查系统资源或使用更小的模型 `qwen2.5:0.5b` |
 | 模型错误 | 确认模型已安装 |
 
-## 🤩 趣事
+## 🤫 趣事
 
 "Lexi" 来源于 "lexicon"（词典）。
 
