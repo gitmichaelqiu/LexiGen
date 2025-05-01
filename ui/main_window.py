@@ -135,16 +135,16 @@ class MainWindow:
         buttons_frame = ttk.Frame(self.input_frame)
         buttons_frame.grid(row=1, column=1, sticky=tk.E, padx=5)
         
+        self.context_btn = ttk.Button(buttons_frame, text=get_translation(self.language, "context_button"),
+                                    command=self._show_context_dialog)
         self.generate_btn = ttk.Button(buttons_frame, text=get_translation(self.language, "generate"), 
                                      command=lambda: self.generate_sentences(append=False))
         self.append_btn = ttk.Button(buttons_frame, text=get_translation(self.language, "append"), 
                                    command=lambda: self.generate_sentences(append=True))
-        self.context_btn = ttk.Button(buttons_frame, text=get_translation(self.language, "context_button"),
-                                    command=self._show_context_dialog)
         
-        # Initially only show generate and context buttons
-        self.generate_btn.pack(side=tk.LEFT)
-        self.context_btn.pack(side=tk.LEFT, padx=(5, 0))
+        # Initially only show context and generate buttons
+        self.context_btn.pack(side=tk.LEFT)
+        self.generate_btn.pack(side=tk.LEFT, padx=(5, 0))
         self.append_btn.configure(state="disabled")  # Explicitly disable the append button
         self.append_btn.pack_forget()
         
