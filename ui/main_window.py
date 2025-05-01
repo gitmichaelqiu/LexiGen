@@ -386,6 +386,10 @@ class MainWindow:
         self._context_dialog.geometry(f"{width}x{height}+{x}+{y}")
         self._context_dialog.transient(self.root)
         self._context_dialog.grab_set()
+
+        # Bind Ctrl/Cmd + T to save and close
+        modifier = "Command" if sys.platform == "darwin" else "Control"
+        self._context_dialog.bind(f"<{modifier}-t>", lambda e: self._save_context())
         
         # Create main frame
         main_frame = ttk.Frame(self._context_dialog, padding="10")
@@ -409,13 +413,14 @@ class MainWindow:
         ttk.Button(buttons_frame, text=get_translation(self.language, "cancel"), 
                   command=self._context_dialog.destroy).pack(side=tk.RIGHT)
     
-    def _save_context(self):
+    def _save_context(self, event=None):
         """Save the current context and close the dialog."""
-        if hasattr(self, '_context_text'):
+        if hasattr(self, '_context_text') and self._context_text.winfo_exists():
             context = self._context_text.get("1.0", tk.END).strip()
             if context:
                 self.context = context
             else:
                 self.context = None
-            if hasattr(self, '_context_dialog'):
+            if hasattr(self, '_context_dialog') and self._context_dialog.winfo_exists():
                 self._context_dialog.destroy()
+        return "break"  # Prevent the event from propagating
