@@ -17,7 +17,7 @@ import ctypes
 class MainWindow:
     def __init__(self, root):
         self.root = root
-        self.root.title(f"LexiGen v{VERSION} - Fill-in-the-Blank Generator")
+        self.root.title("LexiGen")
         self.root.geometry("1100x800")
         
         if sys.platform == 'win32':
