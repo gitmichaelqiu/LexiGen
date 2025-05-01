@@ -36,7 +36,7 @@ LexiGen is an **open-source** fill-in-the-blank problems generator using local A
 
 ### Installation
 
-1. Download LexiGen from the [releases page](https://github.com/yourusername/lexigen/releases)
+1. Download LexiGen from the [releases page](https://github.com/gitmichaelqiu/LexiGen/releases/)
 2. Run the installer for your platform
 3. Launch LexiGen
 
