@@ -1,0 +1,6 @@
+nltk
+requests
+pyinstaller
+python-docx
+pyyaml
+requests
