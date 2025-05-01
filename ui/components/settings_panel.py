@@ -165,7 +165,7 @@ class SettingsPanel(ttk.LabelFrame):
     
     def open_help(self):
         import webbrowser
-        webbrowser.open("https://github.com/gitmichaelqiu/LexiGen/blob/main/README.md")
+        webbrowser.open("https://gitmichaelqiu.github.io/my-projects/lexigen/lexigen/")
     
     def update_texts(self, language):
         self.language = language
