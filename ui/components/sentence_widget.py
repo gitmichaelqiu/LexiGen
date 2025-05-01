@@ -1038,7 +1038,11 @@ class AnalysisWindow(tk.Toplevel):
 
         super().__init__(parent)
         self.title(get_translation(language, "word_analysis"))
-        self.geometry("600x400")
+        width = 600
+        height = 400
+        x = (self.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.winfo_screenheight() // 2) - (height // 2)
+        self.geometry(f"{width}x{height}+{x}+{y}")
         self.resizable(True, True)
         
         # Make window modal
@@ -1197,7 +1201,11 @@ class EditSentenceWindow(tk.Toplevel):
     def __init__(self, parent, word, sentence, api_service, language, frame):
         super().__init__(parent)
         self.title(get_translation(language, "edit_sentence"))
-        self.geometry("600x250")
+        width = 600
+        height = 220
+        x = (self.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.winfo_screenheight() // 2) - (height // 2)
+        self.geometry(f"{width}x{height}+{x}+{y}")
         self.resizable(True, True)
         
         # Make window modal

@@ -136,7 +136,11 @@ class UpdateService:
         """Create a progress window for the download"""
         self.progress_window = Toplevel()
         self.progress_window.title(get_translation(self.language, "downloading_update"))
-        self.progress_window.geometry("400x100")
+        width = 600
+        height = 100
+        x = (self.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.winfo_screenheight() // 2) - (height // 2)
+        self.progress_window.geometry(f"{width}x{height}+{x}+{y}")
         self.progress_window.resizable(False, False)
         
         # Make window modal
