@@ -1029,7 +1029,7 @@ class AnalysisWindow(tk.Toplevel):
             )
             return
         
-        if r'{word}' not in api_service.settings_service.get_settings("designated_analysis_prompt") or r'{sentence}' not in api_service.settings_service.get_settings("designated_analysis_prompt") or r'{tense}' not in api_service.settings_service.get_settings("designated_analysis_prompt"):
+        if r'{word}' not in api_service.settings_service.get_settings("analysis_tense_prompt") or r'{sentence}' not in api_service.settings_service.get_settings("analysis_tense_prompt") or r'{tense}' not in api_service.settings_service.get_settings("analysis_tense_prompt"):
             messagebox.showerror(
                 get_translation(language, "error_title"),
                 get_translation(language, "invalid_prompt_format")
@@ -1143,7 +1143,7 @@ class AnalysisWindow(tk.Toplevel):
         prompt = None
 
         if self.text_widget.tense:
-            prompt_template = self.api_service.settings_service.get_settings("designated_analysis_prompt")
+            prompt_template = self.api_service.settings_service.get_settings("analysis_tense_prompt")
 
             if '{word}' not in prompt_template or '{sentence}' not in prompt_template or '{tense}' not in prompt_template:
                 messagebox.showerror(
