@@ -103,29 +103,22 @@ class UpdateService:
             
         system = platform.system().lower()
         if system == "darwin":
-            # macOS - look for .dmg or .zip files
+            # macOS - look for .dmg
             for asset in release_data["assets"]:
-                if asset["name"].endswith((".dmg", ".zip")) and "macos" in asset["name"].lower():
+                if asset["name"].endswith((".dmg", ".zip")):
                     return asset["browser_download_url"]
         elif system == "windows":
-            # Windows - look for .exe or .zip files
+            # Windows - look for .exes
             for asset in release_data["assets"]:
-                if asset["name"].endswith((".exe", ".zip")) and "windows" in asset["name"].lower():
-                    return asset["browser_download_url"]
-        elif system == "linux":
-            # Linux - look for .AppImage or .zip files
-            for asset in release_data["assets"]:
-                if asset["name"].endswith((".AppImage", ".zip")) and "linux" in asset["name"].lower():
+                if asset["name"].endswith((".exe", ".zip")):
                     return asset["browser_download_url"]
                     
-        # If no platform-specific download is found, return the ZIP if available
-        for asset in release_data["assets"]:
-            if asset["name"].endswith(".zip"):
-                return asset["browser_download_url"]
+        messagebox.showerror(
+            get_translation(self.language, "error_title"),
+            get_translation(self.language, "update_check_error")
+        )
+        return None
                 
-        # If no suitable asset is found, return the first asset URL or None
-        return release_data["assets"][0]["browser_download_url"] if release_data["assets"] else None
-    
     def _download_update(self):
         """Start downloading the update in a background thread"""
         if self.is_downloading or not self.download_url:
@@ -180,8 +173,6 @@ class UpdateService:
                     file_extension = ".dmg"
                 elif self.download_url.lower().endswith(".exe"):
                     file_extension = ".exe"
-                elif self.download_url.lower().endswith(".appimage"):
-                    file_extension = ".AppImage"
                     
             # Create a temporary file to download to with correct extension
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=file_extension)
@@ -290,17 +281,17 @@ class UpdateService:
                 with zipfile.ZipFile(self.downloaded_file, 'r') as zip_ref:
                     zip_ref.extractall(temp_dir)
                 self._install_update(temp_dir)
-            elif file_extension == ".appimage" and platform.system().lower() != "windows":
-                # For Linux AppImage files
-                self._install_appimage_update()
             else:
                 # Fallback for unknown file types - try to handle as executable
                 self._install_generic_executable()
             
         except Exception as e:
             messagebox.showerror(
-                get_translation(self.language, "update_error"),
-                get_translation(self.language, "update_error_msg")
+                #Debugging
+                #get_translation(self.language, "update_error"),
+                #get_translation(self.language, "update_error_msg")
+                "Update Error",
+                "Not even go to install exe update."
             )
             
             # Clean up
@@ -317,7 +308,7 @@ class UpdateService:
             # For Windows, handle .exe installer or direct files
             self._install_windows_update(extracted_path)
         else:
-            # For Linux or other systems, just copy files
+            # For generic systems, just copy files
             self._install_generic_update(extracted_path)
     
     def _install_mac_update(self, extracted_path):
@@ -537,61 +528,94 @@ cd "{dest_dir}"
     def _install_exe_update(self):
         """Handle installation from an EXE file on Windows"""
         try:
-            # Run the installer directly
-            subprocess.Popen([self.downloaded_file])
+            # For portable app, we need to replace the current executable
+            current_exe_path = sys.executable if getattr(sys, 'frozen', False) else None
             
-            # Exit the app
-            if self.root:
-                self.root.after(500, self.root.destroy)
+            # Write debug info to file
+            debug_file = os.path.join(tempfile.gettempdir(), "lexigen_update_debug.log")
+            with open(debug_file, 'w') as f:
+                f.write(f"Debug: Current executable path: {current_exe_path}\n")
+                f.write(f"Debug: Is frozen: {getattr(sys, 'frozen', False)}\n")
             
-        except Exception as e:
-            # Try to run with shell=True as a fallback
-            try:
-                subprocess.Popen(self.downloaded_file, shell=True)
-                
-                # Exit the app
+            if not current_exe_path:
+                with open(debug_file, 'a') as f:
+                    f.write("Debug: Not running as frozen executable\n")
+                    f.write(f"Debug: Running downloaded file: {self.downloaded_file}\n")
+                subprocess.Popen([self.downloaded_file])
                 if self.root:
                     self.root.after(500, self.root.destroy)
-            except:
-                # Re-raise the original exception if fallback also fails
-                raise e
-
-    def _install_appimage_update(self):
-        """Handle installation from an AppImage file on Linux"""
-        try:
-            # Create Applications directory in user's home if it doesn't exist
-            app_dir = os.path.join(os.path.expanduser('~'), "Applications")
-            os.makedirs(app_dir, exist_ok=True)
+                return
+                
+            # Create a batch script to:
+            # 1. Wait for current process to exit
+            # 2. Copy the new exe over the old one
+            # 3. Start the new exe
+            batch_script = f"""@echo off
+echo Debug: Starting update process
+echo Debug: Current exe: {current_exe_path}
+echo Debug: New exe: {self.downloaded_file}
+timeout /t 2 /nobreak
+echo Debug: Copying new exe...
+copy /Y "{self.downloaded_file}" "{current_exe_path}"
+echo Debug: Starting new exe...
+start "" "{current_exe_path}"
+echo Debug: Cleaning up...
+del "%~f0"
+"""
+            with open(debug_file, 'a') as f:
+                f.write(f"Debug: Generated batch script:\n{batch_script}\n")
             
-            # Copy the AppImage to Applications directory
-            target_path = os.path.join(app_dir, os.path.basename(self.downloaded_file))
-            shutil.copy2(self.downloaded_file, target_path)
-            
-            # Make it executable
-            os.chmod(target_path, os.stat(target_path).st_mode | 0o755)
-            
-            # Create script to launch the new version
-            launch_script = f"""#!/bin/bash
-            # Wait for the current application to exit
-            sleep 2
-            # Run the new version
-            {target_path}
-            """
-            
-            script_path = tempfile.mktemp(suffix='.sh')
+            # Write the batch script to a temporary file
+            script_path = os.path.join(tempfile.gettempdir(), "lexigen_update.bat")
+            with open(debug_file, 'a') as f:
+                f.write(f"Debug: Writing batch script to: {script_path}\n")
             with open(script_path, 'w') as f:
-                f.write(launch_script)
+                f.write(batch_script)
             
-            # Make the script executable
-            os.chmod(script_path, 0o755)
+            # Execute the batch script
+            with open(debug_file, 'a') as f:
+                f.write("Debug: Executing batch script\n")
+            subprocess.Popen(["cmd", "/c", script_path], shell=True)
             
-            # Run the script
-            subprocess.Popen(['bash', script_path])
+            # Exit the app
+            if self.root:
+                with open(debug_file, 'a') as f:
+                    f.write("Debug: Scheduling app exit\n")
+                self.root.after(500, self.root.destroy)
             
+        except Exception as e:
+            with open(debug_file, 'a') as f:
+                f.write(f"Debug: Error during update: {str(e)}\n")
+                f.write(f"Debug: Error type: {type(e)}\n")
+                import traceback
+                f.write(f"Debug: Traceback:\n{traceback.format_exc()}\n")
+            messagebox.showerror(
+                get_translation(self.language, "update_error"),
+                get_translation(self.language, "update_error_msg")
+            )
+            raise e
+    def _install_generic_executable(self):
+        """Handle installation of a generic executable file"""
+        try:
+            if platform.system().lower() == "windows":
+                # For Windows, just run the executable
+                subprocess.Popen([self.downloaded_file])
+            elif platform.system().lower() == "darwin":
+                # For macOS, make executable and run
+                os.chmod(self.downloaded_file, 0o755)
+                subprocess.Popen(["open", self.downloaded_file])
+            else:
+                # For other platforms, try to make executable and run
+                os.chmod(self.downloaded_file, 0o755)
+                subprocess.Popen([self.downloaded_file])
+                
             # Exit the app
             if self.root:
                 self.root.after(500, self.root.destroy)
                 
         except Exception as e:
-            self._show_error(_("Failed to install update: ") + str(e))
-            raise e
+            messagebox.showerror(
+                get_translation(self.language, "update_error"),
+                get_translation(self.language, "update_error_msg")
+            )
+            raise e 
