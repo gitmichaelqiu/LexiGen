@@ -114,13 +114,15 @@ class SettingsPanel(ttk.LabelFrame):
             custom_generation_prompt = settings_service.external_generation_prompt
             custom_analysis_prompt = settings_service.external_analysis_prompt
             custom_tense_prompt = settings_service.external_tense_prompt
+            custom_designated_analysis_prompt = settings_service.external_designated_analysis_prompt
             
             # Only switch to custom if values exist and are not empty
-            if custom_generation_prompt or custom_analysis_prompt or custom_tense_prompt:
+            if custom_generation_prompt or custom_analysis_prompt or custom_tense_prompt or custom_designated_analysis_prompt:
                 # Store current values in settings service
                 settings_service.settings["generation_prompt"] = custom_generation_prompt if custom_generation_prompt else DEFAULT_CONFIG["generation_prompt"]
                 settings_service.settings["analysis_prompt"] = custom_analysis_prompt if custom_analysis_prompt else DEFAULT_CONFIG["analysis_prompt"]
                 settings_service.settings["tense_prompt"] = custom_tense_prompt if custom_tense_prompt else DEFAULT_CONFIG["tense_prompt"]
+                settings_service.settings["designated_analysis_prompt"] = custom_designated_analysis_prompt if custom_designated_analysis_prompt else DEFAULT_CONFIG["designated_analysis_prompt"]
             else:
                 # If no custom prompts, stay on default and don't toggle
                 self.using_custom_prompt = False
@@ -129,7 +131,7 @@ class SettingsPanel(ttk.LabelFrame):
             settings_service.settings["generation_prompt"] = DEFAULT_CONFIG["generation_prompt"]
             settings_service.settings["analysis_prompt"] = DEFAULT_CONFIG["analysis_prompt"]
             settings_service.settings["tense_prompt"] = DEFAULT_CONFIG["tense_prompt"]
-        
+            settings_service.settings["designated_analysis_prompt"] = DEFAULT_CONFIG["designated_analysis_prompt"]
         # Update the prompt status label
         self.update_prompt_status()
     

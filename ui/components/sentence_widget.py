@@ -206,6 +206,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
         text_widget.word_visible = False
         text_widget.show_button = show_btn
         text_widget.original_word = original_word  # Store original word
+        text_widget.tense = None
         frame.text_widget = text_widget
         frame.menu_btn = menu_btn  # Store menu button reference
         frame.order_label = order_label  # Store order label reference
@@ -973,7 +974,8 @@ class SentenceWidgetManager(ttk.LabelFrame):
             return
         
         word = frame.text_widget.original_word
-        
+        frame.text_widget.tense = tense
+
         # Get tense prompt template from settings
         prompt_template = self.api_service.settings_service.get_settings("tense_prompt")
         try:
@@ -1021,6 +1023,13 @@ class SentenceWidgetManager(ttk.LabelFrame):
 class AnalysisWindow(tk.Toplevel):
     def __init__(self, parent, word, sentence, api_service, language, text_widget):
         if r'{word}' not in api_service.settings_service.get_settings("analysis_prompt") or r'{sentence}' not in api_service.settings_service.get_settings("analysis_prompt"):
+            messagebox.showerror(
+                get_translation(language, "error_title"),
+                get_translation(language, "invalid_prompt_format")
+            )
+            return
+        
+        if r'{word}' not in api_service.settings_service.get_settings("designated_analysis_prompt") or r'{sentence}' not in api_service.settings_service.get_settings("designated_analysis_prompt") or r'{tense}' not in api_service.settings_service.get_settings("designated_analysis_prompt"):
             messagebox.showerror(
                 get_translation(language, "error_title"),
                 get_translation(language, "invalid_prompt_format")
@@ -1129,10 +1138,24 @@ class AnalysisWindow(tk.Toplevel):
             )
             return
         
-        # Get analysis prompt from settings
-        prompt_template = self.api_service.settings_service.get_settings("analysis_prompt") if hasattr(self.api_service, 'settings_service') and self.api_service.settings_service else None
+        # Get analysis prompt from settings            
 
-        prompt = prompt_template.format(word=self.word, sentence=self.sentence)
+        prompt = None
+
+        if self.text_widget.tense:
+            prompt_template = self.api_service.settings_service.get_settings("designated_analysis_prompt")
+
+            if '{word}' not in prompt_template or '{sentence}' not in prompt_template or '{tense}' not in prompt_template:
+                messagebox.showerror(
+                    get_translation(self.language, "error_title"),
+                    get_translation(self.language, "invalid_prompt_format")
+                )
+                return
+
+            prompt = prompt_template.format(word=self.word, sentence=self.sentence, tense=self.text_widget.tense)
+        else:
+            prompt_template = self.api_service.settings_service.get_settings("analysis_prompt")
+            prompt = prompt_template.format(word=self.word, sentence=self.sentence)
         
         self.analysis = self.api_service.generate_sentence(self.word, prompt)
         

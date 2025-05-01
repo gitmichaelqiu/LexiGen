@@ -13,6 +13,7 @@ class SettingsService:
         self.external_generation_prompt = None
         self.external_analysis_prompt = None
         self.external_tense_prompt = None
+        self.external_designated_analysis_prompt = None
         self.load_settings()
 
     
@@ -30,8 +31,10 @@ class SettingsService:
                         self.external_analysis_prompt = self.settings.get('analysis_prompt')
                     elif key == 'tense_prompt':
                         self.external_tense_prompt = self.settings.get('tense_prompt')
+                    elif key == 'designated_analysis_prompt':
+                        self.external_designated_analysis_prompt = self.settings.get('designated_analysis_prompt')
 
-                    if key not in self.settings or key in ['generation_prompt', 'analysis_prompt', 'tense_prompt']:
+                    if key not in self.settings or key in ['generation_prompt', 'analysis_prompt', 'tense_prompt', 'designated_analysis_prompt']:
                         self.settings[key] = value
             except Exception as e:
                 self._initialize_default_settings()
@@ -50,7 +53,7 @@ class SettingsService:
         self.settings['generation_prompt'] = self.external_generation_prompt
         self.settings['analysis_prompt'] = self.external_analysis_prompt
         self.settings['tense_prompt'] = self.external_tense_prompt
-
+        self.settings['designated_analysis_prompt'] = self.external_designated_analysis_prompt
         try:
             # Make a copy of settings and filter out excluded settings
             settings_to_save = {k: v for k, v in self.settings.items()}
