@@ -12,6 +12,7 @@ from ui.components.settings_panel import SettingsPanel
 from services.icon_service import create_icon
 import os
 import sys
+import ctypes
 
 class MainWindow:
     def __init__(self, root):
@@ -20,11 +21,20 @@ class MainWindow:
         self.root.geometry("1100x800")
         
         if sys.platform == 'win32':
+            # Add window icon
             try:
                 create_icon()
                 icon_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'icons', 'Lexi.ico')
                 self.root.iconbitmap(icon_path)
             except Exception as e:
+                pass
+            
+            # Adjust dpi
+            try:
+                ctypes.windll.shcore.SetProcessDpiAwareness(1)
+                ScaleFactor=ctypes.windll.shcore.GetScaleFactorForDevice(0)
+                root.tk.call('tk', 'scaling', ScaleFactor/75)
+            except Exception:
                 pass
 
         # Initialize settings service
