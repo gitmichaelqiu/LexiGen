@@ -9,6 +9,7 @@ from services.update_service import UpdateService
 from services.settings_service import SettingsService
 from ui.components.sentence_widget import SentenceWidgetManager
 from ui.components.settings_panel import SettingsPanel
+from services.icon_service import create_icon
 import os
 import sys
 
@@ -18,6 +19,14 @@ class MainWindow:
         self.root.title(f"LexiGen v{VERSION} - Fill-in-the-Blank Generator")
         self.root.geometry("1100x800")
         
+        if sys.platform == 'win32':
+            try:
+                create_icon()
+                icon_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'icons', 'Lexi.ico')
+                self.root.iconbitmap(icon_path)
+            except Exception as e:
+                pass
+
         # Initialize settings service
         self.settings_service = SettingsService()
         

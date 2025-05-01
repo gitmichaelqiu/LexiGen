@@ -7,8 +7,6 @@ from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 import platform
 from nltk import word_tokenize
-import markdown
-import re
 
 # Add these keys to both English and Chinese translations
 for language in TRANSLATIONS:
