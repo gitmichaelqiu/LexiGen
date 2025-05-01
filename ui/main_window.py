@@ -139,9 +139,12 @@ class MainWindow:
                                      command=lambda: self.generate_sentences(append=False))
         self.append_btn = ttk.Button(buttons_frame, text=get_translation(self.language, "append"), 
                                    command=lambda: self.generate_sentences(append=True))
+        self.context_btn = ttk.Button(buttons_frame, text=get_translation(self.language, "context_button"),
+                                    command=self._show_context_dialog)
         
-        # Initially only show generate button and ensure append is disabled
+        # Initially only show generate and context buttons
         self.generate_btn.pack(side=tk.LEFT)
+        self.context_btn.pack(side=tk.LEFT, padx=(5, 0))
         self.append_btn.configure(state="disabled")  # Explicitly disable the append button
         self.append_btn.pack_forget()
         
@@ -219,6 +222,7 @@ class MainWindow:
         self.words_label.configure(text=get_translation(self.language, "enter_words"))
         self.generate_btn.configure(text=get_translation(self.language, "generate"))
         self.append_btn.configure(text=get_translation(self.language, "append"))
+        self.context_btn.configure(text=get_translation(self.language, "context_button"))
         self.progress_label.configure(text=get_translation(self.language, "generating"))
         
         self.settings_panel.update_texts(self.language)
@@ -260,7 +264,14 @@ class MainWindow:
         sentences_generated = 0
         
         for i, word in enumerate(words):
-            sentence = self.api_service.generate_sentence(word, prompt)
+            # Add context to prompt if available
+            current_prompt = prompt
+            if hasattr(self, 'context') and self.context:
+                context_attachment_prompt = self.settings_service.get_settings("context_attachment_prompt")
+                if context_attachment_prompt:
+                    current_prompt = context_attachment_prompt.format(context=self.context) + "\n" + prompt
+            
+            sentence = self.api_service.generate_sentence(word, current_prompt)
             if sentence:
                 self.sentence_manager.add_sentence(word, sentence)
                 sentences_generated += 1
@@ -345,3 +356,45 @@ class MainWindow:
         # Final save
         self.settings_service.save_settings()
         self.root.destroy()
+
+    def _show_context_dialog(self):
+        """Show dialog for entering context."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title(get_translation(self.language, "context"))
+        dialog.geometry("400x200")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Create main frame
+        main_frame = ttk.Frame(dialog, padding="10")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Context label and text widget
+        ttk.Label(main_frame, text=get_translation(self.language, "enter_context")).pack(anchor=tk.W)
+        context_text = scrolledtext.ScrolledText(main_frame, height=5, width=40)
+        context_text.pack(fill=tk.BOTH, expand=True, pady=(5, 10))
+        
+        # Buttons frame
+        buttons_frame = ttk.Frame(main_frame)
+        buttons_frame.pack(fill=tk.X)
+        
+        def save_context():
+            context = context_text.get("1.0", tk.END).strip()
+            if context:
+                self.context = context
+            else:
+                self.context = None
+            dialog.destroy()
+        
+        ttk.Button(buttons_frame, text=get_translation(self.language, "save"), 
+                  command=save_context).pack(side=tk.LEFT)
+        ttk.Button(buttons_frame, text=get_translation(self.language, "cancel"), 
+                  command=dialog.destroy).pack(side=tk.RIGHT)
+        
+        # Center the dialog
+        dialog.update_idletasks()
+        width = dialog.winfo_width()
+        height = dialog.winfo_height()
+        x = (dialog.winfo_screenwidth() // 2) - (width // 2)
+        y = (dialog.winfo_screenheight() // 2) - (height // 2)
+        dialog.geometry(f"{width}x{height}+{x}+{y}")

@@ -107,7 +107,9 @@ TRANSLATIONS = {
         "second_conditional": "Second Conditional",
         "third_conditional": "Third Conditional",
         "imperative_mood": "Imperative Mood",
-        "invalid_prompt_format": "Invalid prompt format."
+        "context": "Context",
+        "enter_context": "Enter context (optional):",
+        "context_button": "Context"
     },
     "简体中文": {
         "settings": "设置",
@@ -212,7 +214,9 @@ TRANSLATIONS = {
         "second_conditional": "第二条件句",
         "third_conditional": "第三条件句",
         "imperative_mood": "祈使句",
-        "invalid_prompt_format": "无效提示词格式。"
+        "context": "上下文",
+        "enter_context": "输入上下文（可选）：",
+        "context_button": "上下文"
     }
 }
 
