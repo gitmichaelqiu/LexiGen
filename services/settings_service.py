@@ -10,7 +10,7 @@ class SettingsService:
         """Initialize settings service with specified config path."""
         self.config_path = config_path if config_path else get_settings_path()
         self.settings = {}
-        self.external_generate_prompt = None
+        self.external_generation_prompt = None
         self.external_analysis_prompt = None
         self.external_tense_prompt = None
         self.load_settings()
@@ -24,14 +24,14 @@ class SettingsService:
                     self.settings = yaml.safe_load(f) or {}
                 # Ensure all required settings exist by filling gaps with defaults
                 for key, value in DEFAULT_CONFIG.items():
-                    if key == 'generate_prompt':
-                        self.external_generate_prompt = self.settings.get('generate_prompt')
+                    if key == 'generation_prompt':
+                        self.external_generation_prompt = self.settings.get('generation_prompt')
                     elif key == 'analysis_prompt':
                         self.external_analysis_prompt = self.settings.get('analysis_prompt')
                     elif key == 'tense_prompt':
                         self.external_tense_prompt = self.settings.get('tense_prompt')
 
-                    if key not in self.settings or key in ['generate_prompt', 'analysis_prompt', 'tense_prompt']:
+                    if key not in self.settings or key in ['generation_prompt', 'analysis_prompt', 'tense_prompt']:
                         self.settings[key] = value
             except Exception as e:
                 self._initialize_default_settings()
@@ -47,7 +47,7 @@ class SettingsService:
         """Save current settings to YAML file, excluding certain parameters."""
 
         # Save the external prompts to the settings file
-        self.settings['generate_prompt'] = self.external_generate_prompt
+        self.settings['generation_prompt'] = self.external_generation_prompt
         self.settings['analysis_prompt'] = self.external_analysis_prompt
         self.settings['tense_prompt'] = self.external_tense_prompt
 

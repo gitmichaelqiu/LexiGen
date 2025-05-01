@@ -664,7 +664,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
             return
         
         # Generate new sentence
-        prompt = self.api_service.settings_service.get_settings("generate_prompt")
+        prompt = self.api_service.settings_service.get_settings("generation_prompt")
 
         if r'{word}' not in prompt:
             messagebox.showerror(
