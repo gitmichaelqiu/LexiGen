@@ -118,7 +118,7 @@ class SettingsPanel(ttk.LabelFrame):
             custom_context_attachment_prompt = settings_service.external_context_attachment_prompt
             
             # Only switch to custom if values exist and are not empty
-            if custom_generation_prompt or custom_analysis_prompt or custom_tense_prompt or custom_analysis_tense_prompt:
+            if custom_generation_prompt or custom_analysis_prompt or custom_tense_prompt or custom_analysis_tense_prompt or custom_context_attachment_prompt:
                 # Store current values in settings service
                 settings_service.settings["generation_prompt"] = custom_generation_prompt if custom_generation_prompt else DEFAULT_CONFIG["generation_prompt"]
                 settings_service.settings["analysis_prompt"] = custom_analysis_prompt if custom_analysis_prompt else DEFAULT_CONFIG["analysis_prompt"]

@@ -276,8 +276,15 @@ class MainWindow:
             current_prompt = prompt
             if hasattr(self, 'context') and self.context:
                 context_attachment_prompt = self.settings_service.get_settings("context_attachment_prompt")
-                if context_attachment_prompt:
-                    current_prompt = context_attachment_prompt.format(context=self.context) + "\n" + prompt
+
+                if r'{context}' not in context_attachment_prompt:
+                    messagebox.showerror(
+                        get_translation(self.language, "error_title"),
+                        get_translation(self.language, "invalid_prompt_format")
+                    )
+                    return
+
+                current_prompt = context_attachment_prompt.format(context=self.context) + "\n" + prompt
             
             sentence = self.api_service.generate_sentence(word, current_prompt)
             if sentence:
