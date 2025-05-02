@@ -4,7 +4,7 @@ from models.config import DEFAULT_CONFIG
 from models.translations import get_translation
 
 class APIService:
-    def __init__(self, language="English", api_url=None, settings_service=None):
+    def __init__(self, language="English", api_url=None, settings_service=None, word_processor=None):
         self.language = language
         self.settings_service = settings_service
         if self.settings_service:
@@ -14,6 +14,7 @@ class APIService:
             self.api_url = api_url
             self.model = None
         self.server_connected = False
+        self.word_processor = word_processor
         self.available_models = []
 
     def check_server_status(self, show_message=True):
@@ -82,9 +83,13 @@ class APIService:
                 response.raise_for_status()
                 result = response.json()
                 sentence = result["response"].strip()
-                
-                word_variations = {word.lower(), word.capitalize(), word.upper()}
-                if any(variation in sentence.lower() for variation in word_variations):
+
+                # Use stem to verify the sentence
+                sentence_split = sentence.split()
+                sentence_stems = []
+                for sentence_fragment in sentence_split:
+                    sentence_stems.append(self.word_processor.get_word_stem(sentence_fragment))
+                if self.word_processor.get_word_stem(word.lower()) in sentence_stems:
                     return sentence
                 
                 if attempt == max_attempts - 1:

@@ -51,7 +51,7 @@ class MainWindow:
         
         # Get API URL and model from settings
         api_url = self.settings_service.get_setting("api_url", self.settings_service.get_settings("api_url"))
-        self.api_service = APIService(self.language, api_url, settings_service=self.settings_service)
+        self.api_service = APIService(self.language, api_url, self.settings_service, self.word_processor)
         model = self.settings_service.get_setting("model", self.settings_service.get_settings("model"))
         self.api_service.model = model
         
