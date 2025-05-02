@@ -52,6 +52,7 @@ class MainWindow:
         # Get API URL and model from settings
         api_url = self.settings_service.get_setting("api_url", self.settings_service.get_settings("api_url"))
         self.api_service = APIService(self.language, api_url, self.settings_service, self.word_processor)
+        self.api_service.root = self.root  # Set root window reference
         model = self.settings_service.get_setting("model", self.settings_service.get_settings("model"))
         self.api_service.model = model
         
@@ -72,7 +73,7 @@ class MainWindow:
         self._setup_keyboard_shortcuts()
         
         # Immediately check server status (not waiting for the scheduled checks)
-        self.api_service.check_server_status(show_message=False)
+        self.api_service.check_server_status(show_message=False, parent_window=self.root)
         
         # Setup close handler to save settings
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -229,7 +230,7 @@ class MainWindow:
         self.settings_service.set_setting("language", new_language)
         
         # Check server status after language change
-        self.api_service.check_server_status(show_message=False)
+        self.api_service.check_server_status(show_message=False, parent_window=self.root)
         self.update_server_status_display()
         
         # Rebind keyboard shortcuts after language change
@@ -343,7 +344,7 @@ class MainWindow:
         self.settings_service.set_setting("api_url", new_url)
         
         # Check server status after URL change
-        self.root.after(100, lambda: self.api_service.check_server_status(show_message=False))
+        self.root.after(100, lambda: self.api_service.check_server_status(show_message=False, parent_window=self.root))
         self.root.after(200, lambda: self.update_server_status_display())
 
     def on_model_change(self, new_model):
@@ -355,7 +356,7 @@ class MainWindow:
         self.settings_service.set_setting("model", new_model)
         
         # Check if this is a local model and update server status
-        self.root.after(100, lambda: self.api_service.check_server_status(show_message=False))
+        self.root.after(100, lambda: self.api_service.check_server_status(show_message=False, parent_window=self.root))
         self.root.after(200, lambda: self.update_server_status_display())
 
     def update_server_status_display(self):

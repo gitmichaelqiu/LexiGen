@@ -113,7 +113,13 @@ TRANSLATIONS = {
         "imperative_mood": "Imperative Mood",
         "context": "Context",
         "enter_context": "Enter context (optional):",
-        "context_button": "Context"
+        "context_button": "Context",
+        "loading_model": "Loading Model",
+        "loading_model_message": "Loading model: {model}\nPlease wait...",
+        "local_model_loaded_msg": "Successfully loaded local model: {model}",
+        "local_model_error_msg": "Failed to load local model. Error: {error}",
+        "local_model_not_found_msg": "Local model file not found: {model}",
+        "local_models_dir_error_msg": "Local models directory not found. Please place GGUF models in LexiGenAssets/models directory."
     },
     "简体中文": {
         "settings": "设置",
@@ -224,7 +230,13 @@ TRANSLATIONS = {
         "imperative_mood": "祈使句",
         "context": "上下文",
         "enter_context": "输入上下文（可选）：",
-        "context_button": "上下文"
+        "context_button": "上下文",
+        "loading_model": "加载模型",
+        "loading_model_message": "正在加载模型: {model}\n请稍候...",
+        "local_model_loaded_msg": "成功加载本地模型: {model}",
+        "local_model_error_msg": "加载本地模型失败。错误: {error}",
+        "local_model_not_found_msg": "找不到本地模型文件: {model}",
+        "local_models_dir_error_msg": "找不到本地模型目录。请将GGUF模型放置在LexiGenAssets/models目录中。"
     }
 }
 

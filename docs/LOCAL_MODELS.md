@@ -8,7 +8,11 @@ LexiGen now supports using local GGUF models directly, eliminating the need for 
 
 ## Setting Up Local Models
 
-### Option 1: Using the Model Downloader
+### Step 1: Download a GGUF Model
+
+You can get a GGUF model in two ways:
+
+#### Option 1: Using the Model Downloader
 
 LexiGen comes with a model downloader script that makes it easy to download pre-optimized models:
 
@@ -20,7 +24,7 @@ python utils/model_downloader.py --list
 python utils/model_downloader.py --model qwen2.5-3b-instruct
 ```
 
-### Option 2: Manual Download
+#### Option 2: Manual Download
 
 You can also manually download any GGUF model from Hugging Face and place it in the `LexiGenAssets/models` directory.
 
@@ -31,7 +35,7 @@ Recommended models:
 
 We recommend using the Q4_K_M quantization for a good balance of model quality and memory usage.
 
-## Using Local Models in LexiGen
+### Step 2: Set Up LexiGen to Use Local Models
 
 1. Install the required dependencies:
    ```bash
@@ -43,9 +47,13 @@ We recommend using the Q4_K_M quantization for a good balance of model quality a
    python main.py
    ```
 
-3. In the Settings panel, set the Model dropdown to select any .gguf file that exists in your LexiGenAssets/models directory.
+3. In the Settings panel, set the API URL dropdown to "GGUF Models"
 
-4. The Server Status should automatically show "Connected" when a valid local model is selected.
+4. The model dropdown will automatically show available .gguf files from your LexiGenAssets/models directory. Select the model you want to use.
+
+5. The first time you select a model, you'll see a loading window as the model is loaded into memory. This may take a few moments depending on the model size.
+
+6. The Server Status should automatically show "Connected" when the model is loaded successfully.
 
 ## Troubleshooting
 

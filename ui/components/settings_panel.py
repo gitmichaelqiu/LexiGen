@@ -24,11 +24,12 @@ class SettingsPanel(ttk.LabelFrame):
         self.language_select.grid(row=0, column=2, padx=5)
         self.language_select.bind('<<ComboboxSelected>>', self._on_language_change)
         
-        # API URL Entry
+        # API URL Entry with dropdown
         self.api_url_label = ttk.Label(self, text=get_translation(language, "api_url"))
         self.api_url_label.grid(row=0, column=3, padx=5)
         self.api_url_var = tk.StringVar(value=self.api_service.api_url)
-        self.api_url_entry = ttk.Entry(self, textvariable=self.api_url_var, width=40)
+        self.api_url_options = ["http://127.0.0.1:11434/api/generate", "GGUF Models"]
+        self.api_url_entry = ttk.Combobox(self, textvariable=self.api_url_var, width=40, values=self.api_url_options)
         self.api_url_entry.grid(row=0, column=4, padx=5)
         
         # Model Selection
@@ -88,11 +89,20 @@ class SettingsPanel(ttk.LabelFrame):
     
     def _on_api_url_change(self, *args):
         """Handle API URL changes and notify parent."""
-        self.api_service.api_url = self.api_url_var.get()
+        new_url = self.api_url_var.get()
+        
+        # If changing to "GGUF Models", update models list immediately
+        if new_url == "GGUF Models":
+            # Set the actual backend value to "models"
+            self.api_service.api_url = "models"
+            self.api_service.fetch_models()
+            self.update_model_list(self.api_service.available_models)
+        else:
+            self.api_service.api_url = new_url
         
         # Notify parent window if available
         if hasattr(self.master, 'master') and hasattr(self.master.master, 'on_api_url_change'):
-            self.master.master.on_api_url_change(self.api_url_var.get())
+            self.master.master.on_api_url_change(new_url if new_url != "GGUF Models" else "models")
     
     def _on_model_change(self, *args):
         """Handle model changes and notify parent."""
@@ -152,7 +162,7 @@ class SettingsPanel(ttk.LabelFrame):
             )
     
     def check_server_status(self):
-        if self.api_service.check_server_status():
+        if self.api_service.check_server_status(parent_window=self.main_window.root):
             self.status_label.config(
                 text=get_translation(self.language, "server_status_connected"),
                 foreground="green"
