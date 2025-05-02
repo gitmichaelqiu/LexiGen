@@ -11,6 +11,9 @@ class SettingsPanel(ttk.LabelFrame):
         self.language_change_callback = language_change_callback
         self.main_window = main_window
         
+        # Define default API URL options
+        self.DEFAULT_API_URLS = ["http://127.0.0.1:11434/api/generate", "GGUF Models"]
+        
         # Version Label
         self.version_label = ttk.Label(self, text=f"v{VERSION}", foreground="gray")
         self.version_label.grid(row=0, column=0, padx=5, sticky=tk.W)
@@ -27,8 +30,18 @@ class SettingsPanel(ttk.LabelFrame):
         # API URL Entry with dropdown
         self.api_url_label = ttk.Label(self, text=get_translation(language, "api_url"))
         self.api_url_label.grid(row=0, column=3, padx=5)
-        self.api_url_var = tk.StringVar(value=self.api_service.api_url)
-        self.api_url_options = ["http://127.0.0.1:11434/api/generate", "GGUF Models"]
+        self.api_url_var = tk.StringVar(value=self._get_display_api_url())
+        
+        # Determine dropdown options - always include defaults and add current if it's different
+        self.api_url_options = self.DEFAULT_API_URLS.copy()
+        current_api_url = self.api_service.api_url
+        # If the current URL is "models", display it as "GGUF Models"
+        display_url = "GGUF Models" if current_api_url == "models" else current_api_url
+        
+        # Add the current URL to options if it's not one of the defaults
+        if display_url not in self.api_url_options:
+            self.api_url_options.append(display_url)
+        
         self.api_url_entry = ttk.Combobox(self, textvariable=self.api_url_var, width=40, values=self.api_url_options)
         self.api_url_entry.grid(row=0, column=4, padx=5)
         
@@ -89,20 +102,21 @@ class SettingsPanel(ttk.LabelFrame):
     
     def _on_api_url_change(self, *args):
         """Handle API URL changes and notify parent."""
-        new_url = self.api_url_var.get()
+        display_url = self.api_url_var.get()
+        internal_url = self._get_internal_api_url(display_url)
         
         # If changing to "GGUF Models", update models list immediately
-        if new_url == "GGUF Models":
+        if internal_url == "models":
             # Set the actual backend value to "models"
-            self.api_service.api_url = "models"
+            self.api_service.api_url = internal_url
             self.api_service.fetch_models()
             self.update_model_list(self.api_service.available_models)
         else:
-            self.api_service.api_url = new_url
+            self.api_service.api_url = internal_url
         
         # Notify parent window if available
         if hasattr(self.master, 'master') and hasattr(self.master.master, 'on_api_url_change'):
-            self.master.master.on_api_url_change(new_url if new_url != "GGUF Models" else "models")
+            self.master.master.on_api_url_change(internal_url)
     
     def _on_model_change(self, *args):
         """Handle model changes and notify parent."""
@@ -279,3 +293,15 @@ class SettingsPanel(ttk.LabelFrame):
         if hasattr(self, 'direct_update_btn'):
             self.direct_update_btn.destroy()
             delattr(self, 'direct_update_btn')
+    
+    def _get_display_api_url(self):
+        """Convert internal API URL to display URL"""
+        if self.api_service.api_url == "models":
+            return "GGUF Models"
+        return self.api_service.api_url
+        
+    def _get_internal_api_url(self, display_url):
+        """Convert display URL to internal API URL"""
+        if display_url == "GGUF Models":
+            return "models"
+        return display_url

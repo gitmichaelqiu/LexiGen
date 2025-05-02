@@ -340,8 +340,13 @@ class MainWindow:
         # Update API service
         self.api_service.api_url = new_url
         
-        # Save immediately to settings
-        self.settings_service.set_setting("api_url", new_url)
+        # Save immediately to settings only if it's one of the default options
+        # or already exists in settings (non-default custom URL)
+        current_api_url = self.settings_service.get_setting("api_url")
+        default_urls = ["http://127.0.0.1:11434/api/generate", "models"]
+        
+        if new_url in default_urls or new_url == current_api_url:
+            self.settings_service.set_setting("api_url", new_url)
         
         # Check server status after URL change
         self.root.after(100, lambda: self.api_service.check_server_status(show_message=False, parent_window=self.root))
@@ -375,14 +380,21 @@ class MainWindow:
     def on_close(self):
         """Save all current settings before closing the application."""
         # Ensure we save the most up-to-date settings
-        current_settings = {
-            "language": self.language,
-            "api_url": self.api_service.api_url,
-            "model": self.api_service.model
-        }
+        # For API URL, only save if it's one of the defaults or an existing custom URL
+        current_api_url = self.settings_service.get_setting("api_url")
+        default_urls = ["http://127.0.0.1:11434/api/generate", "models"]
+        
+        settings_to_save = {"language": self.language}
+        
+        # Only update API URL if it's a default one or matches the existing custom URL
+        if self.api_service.api_url in default_urls or self.api_service.api_url == current_api_url:
+            settings_to_save["api_url"] = self.api_service.api_url
+        
+        # Always save the model
+        settings_to_save["model"] = self.api_service.model
         
         # Update all settings at once
-        self.settings_service.update_settings(current_settings)
+        self.settings_service.update_settings(settings_to_save)
         
         # Final save
         self.settings_service.save_settings()

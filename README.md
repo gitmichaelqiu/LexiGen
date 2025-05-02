@@ -77,7 +77,7 @@ LexiGen now supports using local GGUF models directly, without requiring Ollama:
 1. Install Python requirements: `pip install -r requirements.txt`
 2. Use the built-in model downloader: `python utils/model_downloader.py --model qwen2.5-3b-instruct`
 3. Launch LexiGen and:
-   - Set the API URL dropdown to "GGUF Models"
+   - Set the API URL dropdown to "GGUF Models" (one of the default options)
    - Select your downloaded model from the dropdown
 
 For detailed instructions, see [Local Models Guide](docs/LOCAL_MODELS.md).

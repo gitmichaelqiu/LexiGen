@@ -48,6 +48,8 @@ We recommend using the Q4_K_M quantization for a good balance of model quality a
    ```
 
 3. In the Settings panel, set the API URL dropdown to "GGUF Models"
+   - The dropdown will show the two default options (Ollama API and GGUF Models)
+   - If you have a custom API URL in your settings, it will also be shown as a third option
 
 4. The model dropdown will automatically show available .gguf files from your LexiGenAssets/models directory. Select the model you want to use.
 
