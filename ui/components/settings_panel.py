@@ -106,14 +106,36 @@ class SettingsPanel(ttk.LabelFrame):
         display_url = self.api_url_var.get()
         internal_url = self._get_internal_api_url(display_url)
         
-        # If changing to "GGUF Models", update models list immediately
-        if internal_url == "models":
-            # Set the actual backend value to "models"
-            self.api_service.api_url = internal_url
-            self.api_service.fetch_models()
-            self.update_model_list(self.api_service.available_models)
+        # Set the actual backend value
+        self.api_service.api_url = internal_url
+        
+        # Always check server status and update models when API URL changes
+        # First clear the current model list
+        self.model_select["values"] = []
+        self.status_label.config(
+            text=get_translation(self.language, "server_status_checking"),
+            foreground="gray"
+        )
+        self.update()
+        
+        # Check server and fetch models
+        server_status = self.api_service.check_server_status(show_message=False, parent_window=self.main_window.root)
+        
+        # Always try to fetch models, even if server check failed
+        self.api_service.fetch_models()
+        self.update_model_list(self.api_service.available_models)
+        
+        # Update status display
+        if server_status:
+            self.status_label.config(
+                text=get_translation(self.language, "server_status_connected"),
+                foreground="green"
+            )
         else:
-            self.api_service.api_url = internal_url
+            self.status_label.config(
+                text=get_translation(self.language, "server_status_not_connected"),
+                foreground="red"
+            )
         
         # Notify parent window if available
         if hasattr(self.master, 'master') and hasattr(self.master.master, 'on_api_url_change'):
@@ -121,7 +143,37 @@ class SettingsPanel(ttk.LabelFrame):
     
     def _on_model_change(self, *args):
         """Handle model changes and notify parent."""
+        if not self.model_var.get():
+            return  # Don't process empty model selections
+            
         self.api_service.model = self.model_var.get()
+        
+        # If using local models (GGUF), check server status to load the model
+        if self.api_service.api_url == "models":
+            # Update status to checking
+            self.status_label.config(
+                text=get_translation(self.language, "server_status_checking"),
+                foreground="gray"
+            )
+            self.update()
+            
+            # Check server (which will load the model)
+            server_status = self.api_service.check_server_status(
+                show_message=False, 
+                parent_window=self.main_window.root
+            )
+            
+            # Update status display
+            if server_status:
+                self.status_label.config(
+                    text=get_translation(self.language, "server_status_connected"),
+                    foreground="green"
+                )
+            else:
+                self.status_label.config(
+                    text=get_translation(self.language, "server_status_not_connected"),
+                    foreground="red"
+                )
         
         # Notify parent window if available
         if hasattr(self.master, 'master') and hasattr(self.master.master, 'on_model_change'):

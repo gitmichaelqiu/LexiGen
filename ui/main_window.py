@@ -337,8 +337,8 @@ class MainWindow:
 
     def on_api_url_change(self, new_url):
         """Called when API URL is changed."""
-        # Update API service
-        self.api_service.api_url = new_url
+        # Update API service (already done in the settings panel)
+        # self.api_service.api_url = new_url
         
         # Save immediately to settings only if it's one of the default options
         # or already exists in settings (non-default custom URL)
@@ -348,21 +348,21 @@ class MainWindow:
         if new_url in default_urls or new_url == current_api_url:
             self.settings_service.set_setting("api_url", new_url)
         
-        # Check server status after URL change
-        self.root.after(100, lambda: self.api_service.check_server_status(show_message=False, parent_window=self.root))
-        self.root.after(200, lambda: self.update_server_status_display())
+        # No need to check server status here - already done in settings panel
+        # self.root.after(100, lambda: self.api_service.check_server_status(show_message=False, parent_window=self.root))
+        self.root.after(100, lambda: self.update_server_status_display())
 
     def on_model_change(self, new_model):
         """Called when model is changed."""
-        # Update API service
-        self.api_service.model = new_model
+        # Update API service (already done in the settings panel)
+        # self.api_service.model = new_model
         
         # Save immediately to settings
         self.settings_service.set_setting("model", new_model)
         
-        # Check if this is a local model and update server status
-        self.root.after(100, lambda: self.api_service.check_server_status(show_message=False, parent_window=self.root))
-        self.root.after(200, lambda: self.update_server_status_display())
+        # No need to check server status here - already done in settings panel
+        # self.root.after(100, lambda: self.api_service.check_server_status(show_message=False, parent_window=self.root))
+        self.root.after(100, lambda: self.update_server_status_display())
 
     def update_server_status_display(self):
         """Update the server status display to reflect current state."""
