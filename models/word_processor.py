@@ -16,19 +16,21 @@ class WordProcessor:
         """Initialize NLTK data."""
         try:
             # Download required NLTK data
-            nltk.download('averaged_perceptron_tagger', quiet=True)
-            nltk.download('punkt', quiet=True)
-            nltk.download('wordnet', quiet=True)
-            nltk.download('omw-1.4', quiet=True)
-            
             self.lemmatizer = WordNetLemmatizer()
             return True
         except Exception as e:
-            messagebox.showerror(
-                get_translation(self.language, "error_title"),
-                get_translation(self.language, "unexpected_error_msg").format(error="Failed to initialize word variation detection")
-            )
-            return False
+            try:
+                nltk.download('averaged_perceptron_tagger', quiet=True)
+                nltk.download('punkt', quiet=True)
+                nltk.download('wordnet', quiet=True)
+                nltk.download('omw-1.4', quiet=True)
+                return True
+            except Exception as e:
+                messagebox.showerror(
+                    get_translation(self.language, "error_title"),
+                    get_translation(self.language, "unexpected_error_msg").format(error="Failed to initialize word variation detection")
+                )
+                return False
 
     def get_wordnet_pos(self, word):
         """Map POS tag to first character used by WordNetLemmatizer."""
