@@ -60,6 +60,8 @@ class MainWindow:
         # Set root window for the update service
         self.update_service.set_root(self.root)
         
+        self.context = None
+
         # Load translations
         self.available_languages = load_translations()
         
@@ -171,7 +173,8 @@ class MainWindow:
             self.language,
             self.word_processor,
             self.api_service,
-            self.on_sentences_changed
+            self.on_sentences_changed,
+            self
         )
         self.sentence_manager.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
         

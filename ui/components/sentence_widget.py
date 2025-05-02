@@ -20,7 +20,7 @@ for language in TRANSLATIONS:
         TRANSLATIONS[language]["progress_indicator"] = "{0}/{1}"
 
 class SentenceWidgetManager(ttk.LabelFrame):
-    def __init__(self, parent, language, word_processor, api_service, on_sentences_changed=None):
+    def __init__(self, parent, language, word_processor, api_service, on_sentences_changed=None, main_window=None):
         super().__init__(parent, text=get_translation(language, "generated_sentences"), padding="5")
         self.language = language
         self.word_processor = word_processor
@@ -28,6 +28,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
         self.sentence_widgets = []
         self.parent = parent
         self.on_sentences_changed = on_sentences_changed
+        self.main_window = main_window
         
         # Buttons Frame
         self.buttons_frame = ttk.Frame(self)
@@ -661,16 +662,32 @@ class SentenceWidgetManager(ttk.LabelFrame):
                 get_translation(self.language, "server_connection_guide")
             )
             return
-        
-        # Generate new sentence
-        prompt = self.api_service.settings_service.get_settings("generation_prompt")
 
-        if r'{word}' not in prompt:
+        # Generate new sentence
+        basic_prompt = self.api_service.settings_service.get_settings("generation_prompt")
+
+        if r'{word}' not in basic_prompt:
             messagebox.showerror(
                 get_translation(self.language, "error_title"),
                 get_translation(self.language, "invalid_prompt_format")
             )
             return
+        
+        basic_prompt = basic_prompt.format(word=word)
+
+        prompt = ""
+        
+        if self.main_window.context:
+            attachment_prompt = self.api_service.settings_service.get_settings("context_attachment_prompt")
+            if r'{context}' not in attachment_prompt:
+                messagebox.showerror(
+                    get_translation(self.language, "error_title"),
+                    get_translation(self.language, "invalid_prompt_format")
+                )
+                return
+            prompt = basic_prompt + attachment_prompt.format(context=self.main_window.context)
+        else:
+            prompt = basic_prompt
 
         new_sentence = self.api_service.generate_sentence(word, prompt)
         
@@ -1149,7 +1166,7 @@ class AnalysisWindow(tk.Toplevel):
         if self.text_widget.tense:
             prompt_template = self.api_service.settings_service.get_settings("analysis_tense_prompt")
 
-            if '{word}' not in prompt_template or '{sentence}' not in prompt_template or '{tense}' not in prompt_template:
+            if r'{word}' not in prompt_template or r'{sentence}' not in prompt_template or r'{tense}' not in prompt_template:
                 messagebox.showerror(
                     get_translation(self.language, "error_title"),
                     get_translation(self.language, "invalid_prompt_format")
