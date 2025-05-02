@@ -97,8 +97,8 @@ app = BUNDLE(
     icon='icons/Lexi.icns',
     bundle_identifier='com.michaelqiu.lexigen',
     info_plist={
-        'CFBundleShortVersionString': '1.5.1',
-        'CFBundleVersion': '1.5.1',
+        'CFBundleShortVersionString': '1.6.0',
+        'CFBundleVersion': '1.6.0',
         'NSHighResolutionCapable': True,
         'CFBundleDisplayName': 'LexiGen',
         'CFBundleName': 'LexiGen',
