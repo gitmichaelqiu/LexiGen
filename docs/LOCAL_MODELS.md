@@ -10,23 +10,7 @@ LexiGen now supports using local GGUF models directly, eliminating the need for 
 
 ### Step 1: Download a GGUF Model
 
-You can get a GGUF model in two ways:
-
-#### Option 1: Using the Model Downloader
-
-LexiGen comes with a model downloader script that makes it easy to download pre-optimized models:
-
-```bash
-# List available models
-python utils/model_downloader.py --list
-
-# Download a specific model (example)
-python utils/model_downloader.py --model qwen2.5-3b-instruct
-```
-
-#### Option 2: Manual Download
-
-You can also manually download any GGUF model from Hugging Face and place it in the `LexiGenAssets/models` directory.
+Download GGUF models from Hugging Face and place them in the `LexiGenAssets/models` directory.
 
 Recommended models:
 1. [Qwen2.5-3B-Instruct](https://huggingface.co/TheBloke/Qwen2.5-3B-Instruct-GGUF) (2-3GB)

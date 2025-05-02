@@ -67,7 +67,7 @@ LexiGen 是一款 **开源** 的首字母填空生成器，**零成本** 使用�
 LexiGen 现在支持直接使用本地GGUF模型，无需安装Ollama:
 
 1. 安装Python依赖: `pip install -r requirements.txt`
-2. 使用内置模型下载器: `python utils/model_downloader.py --model qwen2.5-3b-instruct`
+2. 从Hugging Face下载GGUF模型，并放置在`LexiGenAssets/models`目录中
 3. 启动LexiGen并:
    - 将API URL下拉菜单设置为"GGUF Models"（默认选项之一）
    - 从下拉菜单中选择您下载的模型

@@ -10,23 +10,7 @@ LexiGen现在支持直接使用本地GGUF模型，无需外部API服务器。这
 
 ### 步骤一：下载GGUF模型
 
-您可以通过两种方式获取GGUF模型：
-
-#### 选项1：使用模型下载器
-
-LexiGen自带模型下载脚本，可以轻松下载预先优化的模型：
-
-```bash
-# 列出可用模型
-python utils/model_downloader.py --list
-
-# 下载特定模型（示例）
-python utils/model_downloader.py --model qwen2.5-3b-instruct
-```
-
-#### 选项2：手动下载
-
-您也可以从Hugging Face手动下载任何GGUF模型并放置在`LexiGenAssets/models`目录中。
+从Hugging Face下载GGUF模型并放置在`LexiGenAssets/models`目录中。
 
 推荐模型：
 1. [Qwen2.5-3B-Instruct](https://huggingface.co/TheBloke/Qwen2.5-3B-Instruct-GGUF) (2-3GB)
