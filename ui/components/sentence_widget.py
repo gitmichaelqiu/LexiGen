@@ -7,6 +7,9 @@ from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 import platform
 from nltk import word_tokenize
+from models.config import DEFAULT_CONFIG
+import requests
+from tkinter import scrolledtext
 
 # Add these keys to both English and Chinese translations
 for language in TRANSLATIONS:
@@ -655,67 +658,99 @@ class SentenceWidgetManager(ttk.LabelFrame):
             self.canvas.update()
 
     def _regenerate_sentence(self, word, frame):
-        """Regenerate sentence for a word."""
-        if not self.api_service.server_connected:
-            messagebox.showwarning(
-                get_translation(self.language, "server_error_title"),
-                get_translation(self.language, "server_connection_guide")
-            )
-            return
-
-        # Generate new sentence
-        basic_prompt = self.api_service.settings_service.get_settings("generation_prompt")
-
-        if r'{word}' not in basic_prompt:
-            messagebox.showerror(
-                get_translation(self.language, "error_title"),
-                get_translation(self.language, "invalid_prompt_format")
-            )
-            return
+        """Regenerate the sentence for a specific word."""
+        # Get prompt from settings
+        prompt = self.main_window.settings_service.get_settings("generation_prompt")
+        if not prompt:
+            prompt = DEFAULT_CONFIG["generation_prompt"]
         
-        basic_prompt = basic_prompt.format(word=word)
-
-        prompt = ""
+        # Disable the regenerate button and change it to progress indicator
+        regen_btn = None
+        for child in frame.grid_slaves()[0].winfo_children()[2].winfo_children():
+            if child.winfo_name() == "regen_button":
+                regen_btn = child
+                break
         
-        if self.main_window.context:
-            attachment_prompt = self.api_service.settings_service.get_settings("context_attachment_prompt")
-            if r'{context}' not in attachment_prompt:
+        if regen_btn:
+            original_text = regen_btn.cget("text")
+            regen_btn.config(text="...", state="disabled")
+        
+        # Check if we have a context attachment
+        if hasattr(self.main_window, 'context') and self.main_window.context:
+            context_attachment_prompt = self.main_window.settings_service.get_settings("context_attachment_prompt")
+            prompt = context_attachment_prompt.format(context=self.main_window.context) + "\n" + prompt
+
+        # Generate a new sentence with retry logic
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            # Get the new sentence
+            sentence = self.api_service.generate_sentence(word, prompt)
+            
+            if sentence:
+                # If successful, update the text widget with the new masked sentence
+                masked_sentence = self._create_masked_sentence(word, sentence)
+                
+                # Find the text widget in this frame
+                text_widget = None
+                for child in frame.grid_slaves():
+                    if isinstance(child, tk.Text):
+                        text_widget = child
+                        break
+                
+                # Get the show button
+                show_btn = None
+                for child in frame.grid_slaves()[0].winfo_children()[2].winfo_children():
+                    if child.winfo_name() == "show_button":
+                        show_btn = child
+                        break
+                
+                if text_widget:
+                    # Save the original sentence for copying
+                    for widget in frame.grid_slaves():
+                        if isinstance(widget, tk.Text):
+                            widget.original_sentence = sentence
+                    
+                    # Update the text widget
+                    text_widget.config(state="normal")
+                    text_widget.delete("1.0", "end")
+                    text_widget.insert("1.0", masked_sentence)
+                    text_widget.config(state="disabled")
+                    
+                    # Reset the button
+                    if regen_btn:
+                        regen_btn.config(text=original_text, state="normal")
+                    
+                    # Reset the show button text
+                    if show_btn:
+                        show_btn.config(text=get_translation(self.language, "show"))
+                    
+                    # Adjust height
+                    text_widget.after(10, lambda tw=text_widget: self._adjust_text_height(tw))
+                    
+                    return True
+            
+            # If we've reached the maximum attempts, reset the button
+            if attempt == max_attempts - 1:
+                if regen_btn:
+                    regen_btn.config(text=original_text, state="normal")
                 messagebox.showerror(
                     get_translation(self.language, "error_title"),
-                    get_translation(self.language, "invalid_prompt_format")
+                    get_translation(self.language, "sentence_generation_failed")
                 )
-                return
-            prompt = basic_prompt + attachment_prompt.format(context=self.main_window.context)
-        else:
-            prompt = basic_prompt
-
-        new_sentence = self.api_service.generate_sentence(word, prompt)
-        
-        if new_sentence:
-            # Create masked sentence
-            masked_sentence = self._create_masked_sentence(word, new_sentence)
-            
-            # Update text widget
-            text_widget = frame.text_widget
-            text_widget.configure(state="normal")
-            text_widget.delete("1.0", tk.END)
-            
-            # Set the appropriate sentence based on visibility state
-            if text_widget.word_visible:
-                text_widget.insert("1.0", new_sentence)
-            else:
-                text_widget.insert("1.0", masked_sentence)
-            
-            # Update stored sentences
-            text_widget.original_sentence = new_sentence
-            text_widget.masked_sentence = masked_sentence
-            
-            # Readjust height
-            text_widget.see("end")
-            num_lines = text_widget.count("1.0", "end", "displaylines")[0]
-            text_widget.configure(height=max(2, num_lines))
-            
-            text_widget.configure(state="disabled")
+                return False
+                
+        # If we're here, generation failed
+        if regen_btn:
+            regen_btn.config(text=original_text, state="normal")
+        return False
+    
+    def _adjust_text_height(self, text_widget):
+        """Adjust the height of a text widget based on its content."""
+        text_widget.configure(state="normal")
+        text_widget.see("end")
+        num_lines = text_widget.count("1.0", "end", "displaylines")[0]
+        text_widget.configure(height=max(2, num_lines))
+        text_widget.configure(state="disabled")
 
     def update_texts(self, language):
         """Update all texts in the widget after language change."""
@@ -1039,179 +1074,143 @@ class SentenceWidgetManager(ttk.LabelFrame):
 
 class AnalysisWindow(tk.Toplevel):
     def __init__(self, parent, word, sentence, api_service, language, text_widget):
-        if r'{word}' not in api_service.settings_service.get_settings("analysis_prompt") or r'{sentence}' not in api_service.settings_service.get_settings("analysis_prompt"):
-            messagebox.showerror(
-                get_translation(language, "error_title"),
-                get_translation(language, "invalid_prompt_format")
-            )
-            return
-        
-        if r'{word}' not in api_service.settings_service.get_settings("analysis_tense_prompt") or r'{sentence}' not in api_service.settings_service.get_settings("analysis_tense_prompt") or r'{tense}' not in api_service.settings_service.get_settings("analysis_tense_prompt"):
-            messagebox.showerror(
-                get_translation(language, "error_title"),
-                get_translation(language, "invalid_prompt_format")
-            )
-            return
-
         super().__init__(parent)
-        self.title(get_translation(language, "word_analysis"))
+        self.parent = parent
+        self.word = word
+        self.sentence = sentence
+        self.api_service = api_service
+        self.language = language
+        self.text_widget = text_widget
+        self.title(get_translation(self.language, "analysis_title"))
+
+        # Set geometry and make modal
         width = 600
-        height = 400
+        height = 300
         x = (self.winfo_screenwidth() // 2) - (width // 2)
         y = (self.winfo_screenheight() // 2) - (height // 2)
         self.geometry(f"{width}x{height}+{x}+{y}")
-        self.resizable(True, True)
-        
-        # Make window modal
         self.transient(parent)
         self.grab_set()
         
-        # Store references
-        self.api_service = api_service
-        self.language = language
-        self.word = word
-        self.sentence = sentence
-        self.text_widget = text_widget
-        self.analysis = None
-        self.editing = False
+        # Setup UI
+        self.setup_ui()
         
-        # Bind to window close event
-        self.protocol("WM_DELETE_WINDOW", self._on_close)
-        
-        # Create main frame
+    def setup_ui(self):
+        # Main container
         main_frame = ttk.Frame(self, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
         
         # Word and sentence display
-        word_frame = ttk.Frame(main_frame)
-        word_frame.pack(fill=tk.X, pady=(0, 10))
+        info_frame = ttk.Frame(main_frame)
+        info_frame.pack(fill=tk.X, pady=(0, 10))
         
-        ttk.Label(word_frame, text=f"{get_translation(language, 'word')}: {word}").pack(side=tk.LEFT)
-        ttk.Label(word_frame, text=f"{get_translation(language, 'sentence')}: {sentence}").pack(side=tk.LEFT, padx=(20, 0))
+        ttk.Label(info_frame, text=f"{get_translation(self.language, 'word')}: ").pack(side=tk.LEFT)
+        ttk.Label(info_frame, text=self.word, font=("", 10, "bold")).pack(side=tk.LEFT)
         
-        # Analysis text widget
-        self.analysis_text = tk.Text(main_frame, wrap=tk.WORD, height=15, state="disabled")
-        self.analysis_text.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        sentence_frame = ttk.Frame(main_frame)
+        sentence_frame.pack(fill=tk.X, pady=(0, 10))
         
-        # Buttons frame
+        ttk.Label(sentence_frame, text=f"{get_translation(self.language, 'sentence')}: ").pack(anchor=tk.W)
+        sentence_text = tk.Text(sentence_frame, wrap=tk.WORD, height=3)
+        sentence_text.insert("1.0", self.sentence)
+        sentence_text.configure(state="disabled")
+        sentence_text.pack(fill=tk.X)
+        
+        # Analysis section
+        analysis_frame = ttk.Frame(main_frame)
+        analysis_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        
+        ttk.Label(analysis_frame, text=f"{get_translation(self.language, 'analysis')}: ").pack(anchor=tk.W)
+        self.analysis_text = scrolledtext.ScrolledText(analysis_frame, wrap=tk.WORD, height=5)
+        self.analysis_text.pack(fill=tk.BOTH, expand=True)
+        
+        # Buttons
         buttons_frame = ttk.Frame(main_frame)
         buttons_frame.pack(fill=tk.X)
         
-        self.regenerate_btn = ttk.Button(
-            buttons_frame,
-            text=get_translation(language, "regenerate_analysis"),
-            command=self._regenerate_analysis
-        )
-        self.regenerate_btn.pack(side=tk.LEFT)
+        ttk.Button(buttons_frame, text=get_translation(self.language, "regenerate"), 
+                  command=self._regenerate_analysis).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(buttons_frame, text=get_translation(self.language, "close"), 
+                  command=self._on_close).pack(side=tk.RIGHT)
         
-        self.edit_btn = ttk.Button(
-            buttons_frame,
-            text=get_translation(language, "edit_analysis"),
-            command=self._toggle_edit_mode
-        )
-        self.edit_btn.pack(side=tk.LEFT, padx=(5, 0))
-        
-        close_btn = ttk.Button(
-            buttons_frame,
-            text=get_translation(language, "close"),
-            command=self._on_close
-        )
-        close_btn.pack(side=tk.RIGHT)
-        
-        # Check for existing analysis
-        if hasattr(text_widget, 'analysis') and text_widget.analysis:
-            self.analysis = text_widget.analysis
-            self._display_analysis()
-        else:
-            self._generate_analysis()
-    
+        # Start analysis
+        self._generate_analysis()
+
     def _toggle_edit_mode(self):
-        """Toggle between view and edit modes for the analysis text."""
-        if not self.editing:
-            # Switch to edit mode
-            self.analysis_text.configure(state="normal")
-            self.edit_btn.configure(text=get_translation(self.language, "save_analysis"))
-            self.editing = True
-        else:
-            # Switch back to view mode and save changes
-            self.analysis = self.analysis_text.get("1.0", "end-1c").strip()
+        if self.analysis_text.cget("state") == "normal":
             self.analysis_text.configure(state="disabled")
-            self.edit_btn.configure(text=get_translation(self.language, "edit_analysis"))
-            self.editing = False
-    
+        else:
+            self.analysis_text.configure(state="normal")
+
     def _display_analysis(self):
-        """Display the analysis in the text widget with markdown formatting."""
-        if not self.analysis:
+        """Display the analysis results."""
+        if hasattr(self, 'analysis_result') and self.analysis_result:
+            self.analysis_text.configure(state="normal")
+            self.analysis_text.delete("1.0", tk.END)
+            self.analysis_text.insert("1.0", self.analysis_result)
+            self.analysis_text.configure(state="disabled")
+
+    def _generate_analysis(self):
+        """Generate analysis for the given word and sentence."""
+        if not self.api_service.server_connected:
+            self.analysis_text.configure(state="normal")
+            self.analysis_text.delete("1.0", tk.END)
+            self.analysis_text.insert("1.0", get_translation(self.language, "server_not_connected"))
+            self.analysis_text.configure(state="disabled")
             return
-            
-        # Display the text directly
+
         self.analysis_text.configure(state="normal")
         self.analysis_text.delete("1.0", tk.END)
-        self.analysis_text.insert("1.0", self.analysis)
+        self.analysis_text.insert("1.0", get_translation(self.language, "analyzing"))
         self.analysis_text.configure(state="disabled")
-    
-    def _generate_analysis(self):
-        """Generate analysis for the word in the sentence."""
-        if not self.api_service.server_connected:
-            messagebox.showwarning(
-                get_translation(self.language, "server_error_title"),
-                get_translation(self.language, "server_connection_guide")
-            )
-            return
+        self.update()
+
+        # Get analysis prompt
+        analysis_prompt = self.api_service.settings_service.get_settings("analysis_prompt")
         
-        # Get analysis prompt from settings            
+        # Format the prompt with the word and sentence
+        prompt = analysis_prompt.format(word=self.word, sentence=self.sentence)
+        
+        # Use the generation method but with analysis prompt
+        self.analysis_result = self._get_analysis(prompt)
+        
+        # Display the result
+        self._display_analysis()
 
-        prompt = None
-
-        if self.text_widget.tense:
-            prompt_template = self.api_service.settings_service.get_settings("analysis_tense_prompt")
-
-            if r'{word}' not in prompt_template or r'{sentence}' not in prompt_template or r'{tense}' not in prompt_template:
-                messagebox.showerror(
-                    get_translation(self.language, "error_title"),
-                    get_translation(self.language, "invalid_prompt_format")
+    def _get_analysis(self, prompt):
+        """Get analysis from either local model or API."""
+        try:
+            if self.api_service.using_local_model and self.api_service.local_model is not None:
+                # Use local model for analysis
+                output = self.api_service.local_model(
+                    prompt,
+                    max_tokens=256,
+                    stop=["</s>", "\n\n"],
+                    echo=False
                 )
-                return
+                return output['choices'][0]['text'].strip()
+            else:
+                # Use remote API
+                response = requests.post(
+                    self.api_service.api_url,
+                    json={
+                        "model": self.api_service.model,
+                        "prompt": prompt,
+                        "stream": False
+                    }
+                )
+                response.raise_for_status()
+                result = response.json()
+                return result["response"].strip()
+        except Exception as e:
+            return f"{get_translation(self.language, 'analysis_error')}: {str(e)}"
 
-            prompt = prompt_template.format(word=self.word, sentence=self.sentence, tense=self.text_widget.tense)
-        else:
-            prompt_template = self.api_service.settings_service.get_settings("analysis_prompt")
-            prompt = prompt_template.format(word=self.word, sentence=self.sentence)
-        
-        self.analysis = self.api_service.generate_sentence(self.word, prompt)
-        
-        if self.analysis:
-            self._display_analysis()
-        else:
-            messagebox.showerror(
-                get_translation(self.language, "error_title"),
-                get_translation(self.language, "analysis_generation_failed")
-            )
-            return
-    
     def _regenerate_analysis(self):
         """Regenerate the analysis."""
-        self.regenerate_btn.configure(state="disabled")
-        self.edit_btn.configure(state="disabled")
-        
-        # Reset to view mode if currently editing
-        if self.editing:
-            self.editing = False
-            self.edit_btn.configure(text=get_translation(self.language, "edit_analysis"))
-        
         self._generate_analysis()
-        
-        self.regenerate_btn.configure(state="normal")
-        self.edit_btn.configure(state="normal")
-    
+
     def _on_close(self):
-        """Store analysis in text widget and close window."""
-        # If in edit mode, save the current text
-        if self.editing:
-            self.analysis = self.analysis_text.get("1.0", "end-1c").strip()
-        
-        if self.analysis:
-            self.text_widget.analysis = self.analysis
+        """Close the window."""
         self.destroy()
 
 class EditSentenceWindow(tk.Toplevel):

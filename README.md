@@ -70,6 +70,16 @@ Want to share the sentence set? Press "Export to Word" or "Ctrl/Cmd + E" to expo
    ollama pull qwen2.5:3b
    ```
 
+### Alternative: Using Local GGUF Models
+
+LexiGen now supports using local GGUF models directly, without requiring Ollama:
+
+1. Install Python requirements: `pip install -r requirements.txt`
+2. Use the built-in model downloader: `python utils/model_downloader.py --model qwen2.5-3b-instruct`
+3. Launch LexiGen and select the downloaded model in Settings
+
+For detailed instructions, see [Local Models Guide](docs/LOCAL_MODELS.md).
+
 ### Installation
 
 1. Download LexiGen from the [releases page](https://github.com/gitmichaelqiu/LexiGen/releases/)

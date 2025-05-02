@@ -1,0 +1,80 @@
+# Using Local Models in LexiGen
+
+LexiGen now supports using local GGUF models directly, eliminating the need for an external API server. This feature allows you to:
+
+1. Run LexiGen completely offline
+2. Use different models without installing Ollama
+3. Get more consistent results with fixed model parameters
+
+## Setting Up Local Models
+
+### Option 1: Using the Model Downloader
+
+LexiGen comes with a model downloader script that makes it easy to download pre-optimized models:
+
+```bash
+# List available models
+python utils/model_downloader.py --list
+
+# Download a specific model (example)
+python utils/model_downloader.py --model qwen2.5-3b-instruct
+```
+
+### Option 2: Manual Download
+
+You can also manually download any GGUF model from Hugging Face and place it in the `LexiGenAssets/models` directory.
+
+Recommended models:
+1. [Qwen2.5-3B-Instruct](https://huggingface.co/TheBloke/Qwen2.5-3B-Instruct-GGUF) (2-3GB)
+2. [Phi-3-mini-4k](https://huggingface.co/TheBloke/phi-3-mini-4k-GGUF) (2-3GB)
+3. [Llama-3-8B-Instruct](https://huggingface.co/TheBloke/Llama-3-8B-Instruct-GGUF) (4-5GB)
+
+We recommend using the Q4_K_M quantization for a good balance of model quality and memory usage.
+
+## Using Local Models in LexiGen
+
+1. Install the required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. Launch LexiGen:
+   ```bash
+   python main.py
+   ```
+
+3. In the Settings panel, set the Model dropdown to select any .gguf file that exists in your LexiGenAssets/models directory.
+
+4. The Server Status should automatically show "Connected" when a valid local model is selected.
+
+## Troubleshooting
+
+### Memory Requirements
+
+GGUF models require significant memory to run:
+- 4GB models typically need 8-10GB RAM
+- 3GB models typically need 6-8GB RAM
+
+### Common Issues
+
+1. **Model fails to load**: Ensure you have enough RAM available for the model size
+2. **Slow generation**: First generation with a model is slow as it loads into memory
+3. **Import error for llama-cpp-python**: Try reinstalling with:
+   ```bash
+   pip uninstall -y llama-cpp-python
+   pip install llama-cpp-python
+   ```
+
+## Advanced Configuration
+
+For advanced users, you can modify the `api_service.py` file to change model parameters:
+- `n_ctx`: Context length (default: 2048)
+- `max_tokens`: Maximum tokens to generate
+- Other parameters like temperature, top_p, etc.
+
+## Notes on Performance
+
+Local model performance depends on your hardware:
+- CPU only: Generation will be slower
+- CUDA/ROCm enabled builds can utilize GPU acceleration
+- First generation after loading a model may take longer 

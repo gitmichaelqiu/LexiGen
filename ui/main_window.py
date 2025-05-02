@@ -353,6 +353,10 @@ class MainWindow:
         
         # Save immediately to settings
         self.settings_service.set_setting("model", new_model)
+        
+        # Check if this is a local model and update server status
+        self.root.after(100, lambda: self.api_service.check_server_status(show_message=False))
+        self.root.after(200, lambda: self.update_server_status_display())
 
     def update_server_status_display(self):
         """Update the server status display to reflect current state."""
