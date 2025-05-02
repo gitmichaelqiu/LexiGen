@@ -42,7 +42,8 @@ class SettingsPanel(ttk.LabelFrame):
         if display_url not in self.api_url_options:
             self.api_url_options.append(display_url)
         
-        self.api_url_entry = ttk.Combobox(self, textvariable=self.api_url_var, width=40, values=self.api_url_options)
+        self.api_url_entry = ttk.Combobox(self, textvariable=self.api_url_var, width=40, 
+                                         values=self.api_url_options, state="readonly")
         self.api_url_entry.grid(row=0, column=4, padx=5)
         
         # Model Selection

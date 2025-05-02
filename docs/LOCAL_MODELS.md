@@ -47,7 +47,7 @@ We recommend using the Q4_K_M quantization for a good balance of model quality a
    python main.py
    ```
 
-3. In the Settings panel, set the API URL dropdown to "GGUF Models"
+3. In the Settings panel, select "GGUF Models" from the API URL dropdown
    - The dropdown will show the two default options (Ollama API and GGUF Models)
    - If you have a custom API URL in your settings, it will also be shown as a third option
 

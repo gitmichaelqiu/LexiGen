@@ -47,7 +47,7 @@ python utils/model_downloader.py --model qwen2.5-3b-instruct
    python main.py
    ```
 
-3. 在设置面板中，将API URL下拉菜单设置为"GGUF Models"
+3. 在设置面板中，从API URL下拉菜单中选择"GGUF Models"
    - 下拉菜单将显示两个默认选项（Ollama API和GGUF Models）
    - 如果您的设置中有自定义API URL，它也会作为第三个选项显示
 
