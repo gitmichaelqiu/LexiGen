@@ -118,12 +118,19 @@ class SettingsPanel(ttk.LabelFrame):
         )
         self.update()
         
-        # Check server and fetch models
-        server_status = self.api_service.check_server_status(show_message=False, parent_window=self.main_window.root)
-        
-        # Always try to fetch models, even if server check failed
+        # Fetch models first, before checking server status
         self.api_service.fetch_models()
         self.update_model_list(self.api_service.available_models)
+        
+        # For GGUF Models, we need to select a model first before checking server
+        if internal_url == "models" and self.api_service.available_models:
+            # Only set the model if it's not already set or not in the available models
+            if (not self.model_var.get() or 
+                self.model_var.get() not in self.api_service.available_models):
+                self.model_var.set(self.api_service.available_models[0])
+        
+        # Now check server status (after model selection for GGUF Models)
+        server_status = self.api_service.check_server_status(show_message=False, parent_window=self.main_window.root)
         
         # Update status display
         if server_status:

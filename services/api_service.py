@@ -71,11 +71,43 @@ class APIService:
     def _check_local_model_status(self, show_message=True, parent_window=None):
         # Check for local models when api_url is set to "models"
         models_dir = os.path.join(get_assets_path(), "models")
-        if os.path.exists(models_dir) and self.model:
+        
+        # First check if the models directory exists
+        if not os.path.exists(models_dir):
+            self.server_connected = False
+            self.using_local_model = False
+            if show_message:
+                messagebox.showerror(
+                    get_translation(self.language, "server_status_title"),
+                    get_translation(self.language, "local_models_dir_error_msg")
+                )
+            return False
+        
+        # Check for available GGUF models
+        available_models = [f for f in os.listdir(models_dir) if f.endswith(".gguf") and LLAMA_CPP_AVAILABLE]
+        
+        if not available_models:
+            # No GGUF models available
+            self.server_connected = False
+            self.using_local_model = False
+            if show_message:
+                messagebox.showerror(
+                    get_translation(self.language, "server_status_title"),
+                    get_translation(self.language, "local_models_dir_error_msg")
+                )
+            return False
+            
+        # If no model selected but we have models available, set first one as current model
+        if not self.model and available_models:
+            self.model = available_models[0]
+            
+        # Now we should have a model selected
+        if self.model:
             model_path = os.path.join(models_dir, self.model)
             if os.path.exists(model_path) and model_path.endswith(".gguf") and LLAMA_CPP_AVAILABLE:
-                # Load model in a separate thread to prevent UI freeze
+                # Model exists and is valid
                 if show_message and parent_window:
+                    # Load with UI feedback
                     loading_window = ModelLoadingWindow(parent_window, self.model, self.language)
                     
                     def load_model_thread():
@@ -121,7 +153,7 @@ class APIService:
                     thread.start()
                     return True
                 else:
-                    # If no UI interaction needed, load directly
+                    # Load without UI feedback (silent)
                     try:
                         if self.local_model is None or self.local_model.model_path != model_path:
                             if self.local_model is not None:
@@ -141,6 +173,7 @@ class APIService:
                             )
                         return False
             else:
+                # Model file doesn't exist or isn't valid
                 self.server_connected = False
                 self.using_local_model = False
                 if show_message:
@@ -150,6 +183,7 @@ class APIService:
                     )
                 return False
         else:
+            # This shouldn't happen given our logic above
             self.server_connected = False
             self.using_local_model = False
             if show_message:
