@@ -227,6 +227,13 @@ class MainWindow:
         
         # Save language setting
         self.settings_service.set_setting("language", new_language)
+        
+        # Check server status after language change
+        self.api_service.check_server_status(show_message=False)
+        self.update_server_status_display()
+        
+        # Rebind keyboard shortcuts after language change
+        self._setup_keyboard_shortcuts()
     
     def update_ui_texts(self):
         self.input_frame.configure(text=get_translation(self.language, "input_words"))
@@ -240,6 +247,7 @@ class MainWindow:
         self.sentence_manager.update_texts(self.language)
     
     def generate_sentences(self, append=False):
+        # Get prompt from settings, fallback to default if None
         prompt = self.settings_service.get_settings("generation_prompt")
 
         if r'{word}' not in prompt:

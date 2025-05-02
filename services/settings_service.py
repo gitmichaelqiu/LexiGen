@@ -73,7 +73,6 @@ class SettingsService:
     def set_setting(self, key, value):
         """Set a setting value by key and save settings."""
         self.settings[key] = value
-        return self.save_settings()
     
     def update_settings(self, settings_dict):
         """Update multiple settings at once and save settings."""
