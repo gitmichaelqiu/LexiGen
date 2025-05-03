@@ -62,7 +62,7 @@ Want your sentences generated under a certain context? Press "Context" or "Ctrl/
 
 ### Save/Load History
 
-Press "Menu -> Save/Load" or "Ctrl/Cmd + S"/"Ctrl/Cmd + L" to save/load all current data, including words, sentences, analyses, and context to/from an external YAML file.
+Press "Menu -> Save/Load" or "Ctrl/Cmd + S"/"Ctrl/Cmd + O" to save/load all current data, including words, sentences, analyses, and context to/from an external YAML file.
 
 You can share YAML files with your friends/students/teachers!
 
