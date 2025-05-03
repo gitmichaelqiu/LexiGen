@@ -14,9 +14,7 @@ An AI-powered desktop application for generating educational fill-in-the-blank s
 
 </div>
 
-
 <img width="1318" alt="Screenshot 2025-05-01 at 19 16 55" src="https://github.com/user-attachments/assets/0065f2a2-f1d0-4fa2-8a85-f36ca215c9b8" />
-
 
 ## 🎯 Overview
 
@@ -54,13 +52,25 @@ Press "⋮" next to the sentences to browse the menu:
 
 ### Export to Word
 
-Want to share the sentence set? Press "Export to Word" or "Ctrl/Cmd + E" to export all your sentences to a docx. You can choose to generate analysis.
+Want to share the sentence set? Press "Menu -> Export to Word" or "Ctrl/Cmd + E" to export all your sentences to a docx. You can choose to generate analysis.
 
 **Answer Key** will be automatically appended to the last pages of the document.
+
+### Designate Context
+
+Want your sentences generated under a certain context? Press "Context" or "Ctrl/Cmd + T" to add a context to all **New Sentences**. When you close the context window by the keyboard shortcut, the context will be automatically saved.
+
+### Save/Load History
+
+Press "Menu -> Save/Load" or "Ctrl/Cmd + S"/"Ctrl/Cmd + L" to save/load all current data, including words, sentences, analyses, and context to/from an external YAML file.
+
+You can share YAML files with your friends/students/teachers!
 
 ## 🚀 Quick Start
 
 ### Prerequisites
+
+If you do **NOT** want to download Ollama and use terminal to download models, go to "Alternative: Using Local GGUF Models".
 
 1. Install [Ollama](https://ollama.com)
 2. Launch the Ollama app
@@ -79,9 +89,11 @@ LexiGen now supports using local GGUF models directly, without requiring Ollama:
    - Set the API URL dropdown to "GGUF Models" (one of the default options)
    - Select your downloaded model from the dropdown
 
+".zip" packages in [Releases]((https://github.com/gitmichaelqiu/LexiGen/releases/)) already contains `qwen2.5-3b-instruct-q4_k_m.gguf`, under `Qwen RESEARCH LICENSE AGREEMENT`. According to the `License`, you **CANNOT** use it for **COMMERCIAL USE**. The user shall be responsible for any consequences caused by using the model out of the LICENSE's rules.
+
 ### Installation
 
-1. Download LexiGen from the [releases page](https://github.com/gitmichaelqiu/LexiGen/releases/)
+1. Download LexiGen from the [Releases](https://github.com/gitmichaelqiu/LexiGen/releases/)
 2. Run the installer for your platform
 3. Launch LexiGen
 
