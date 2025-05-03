@@ -11,6 +11,7 @@ from models.config import DEFAULT_CONFIG
 import requests
 from tkinter import scrolledtext
 import yaml
+from datetime import datetime
 
 # Add these keys to both English and Chinese translations
 for language in TRANSLATIONS:
@@ -844,7 +845,6 @@ class SentenceWidgetManager(ttk.LabelFrame):
                     
                     # Clear any existing analysis since it's no longer valid
                     if hasattr(frame, 'analysis'):
-                        print(f"Clearing analysis for regenerated sentence: {sentence[:30]}...")
                         delattr(frame, 'analysis')
                     
                     # Adjust height
@@ -990,11 +990,16 @@ class SentenceWidgetManager(ttk.LabelFrame):
             )
             return
         
+        # Create default filename with timestamp
+        current_time = datetime.now().strftime("%y%m%d_%H%M%S")
+        default_filename = f"lexigen_{current_time}.yaml"
+        
         # Ask user where to save the file
         file_path = filedialog.asksaveasfilename(
             title=get_translation(self.language, "save_history_title"),
             defaultextension=".yaml",
-            filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")]
+            filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")],
+            initialfile=default_filename
         )
         
         if not file_path:
@@ -1102,7 +1107,6 @@ class SentenceWidgetManager(ttk.LabelFrame):
                         # Store analysis if available
                         if "analysis" in sentence_data and sentence_data["analysis"]:
                             frame.analysis = sentence_data["analysis"]
-                            print(f"Loaded analysis from history for sentence {sentence[:30]}... : {sentence_data['analysis'][:20]}...")
             
             # Update button states
             self._update_buttons_state()
@@ -1349,12 +1353,6 @@ class SentenceWidgetManager(ttk.LabelFrame):
         if not text_widget:
             return
             
-        # Print debug info to check if analysis exists in frame
-        if hasattr(frame, 'analysis') and frame.analysis:
-            print(f"Analysis exists for this sentence: {frame.analysis[:20]}...")
-        else:
-            print("No analysis found for this sentence")
-        
         # Create and show analysis window
         analysis_window = AnalysisWindow(self, word, sentence, self.api_service, self.language, text_widget)
         
@@ -1418,7 +1416,6 @@ class SentenceWidgetManager(ttk.LabelFrame):
                 
                 # Remove analysis if it exists as the sentence has changed
                 if hasattr(frame, 'analysis'):
-                    print(f"Clearing analysis for tense-modified sentence: {frame.original_sentence[:30]}...")
                     delattr(frame, 'analysis')
                 
                 # Adjust height
@@ -1499,10 +1496,8 @@ class AnalysisWindow(tk.Toplevel):
     def _check_existing_analysis(self):
         """Check for existing analysis and load it if it exists."""
         if self.sentence_frame is not None and hasattr(self.sentence_frame, 'analysis') and self.sentence_frame.analysis:
-            print(f"Loading existing analysis: {self.sentence_frame.analysis[:20]}...")
             self.load_existing_analysis(self.sentence_frame.analysis)
         else:
-            print("No existing analysis found, generating new one...")
             self._generate_analysis()
         
     def load_existing_analysis(self, analysis):
@@ -1539,12 +1534,10 @@ class AnalysisWindow(tk.Toplevel):
         """Generate analysis for the given word and sentence."""
         # Check if we already have an analysis stored in the frame
         if self.sentence_frame is not None and hasattr(self.sentence_frame, 'analysis') and self.sentence_frame.analysis:
-            print(f"Using existing analysis from frame: {self.sentence_frame.analysis[:20]}...")
             self.analysis_result = self.sentence_frame.analysis
             self._display_analysis()
             return
         
-        print("Generating new analysis...")
         if not self.api_service.server_connected:
             self.analysis_text.configure(state="normal")
             self.analysis_text.delete("1.0", tk.END)
@@ -1570,7 +1563,6 @@ class AnalysisWindow(tk.Toplevel):
         # Store the analysis in the sentence frame
         if self.sentence_frame is not None and self.analysis_result:
             self.sentence_frame.analysis = self.analysis_result
-            print(f"Stored new analysis in frame: {self.analysis_result[:20]}...")
         
         # Display the result
         self._display_analysis()
