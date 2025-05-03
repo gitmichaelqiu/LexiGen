@@ -5,10 +5,14 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from models.config import DEFAULT_CONFIG, get_assets_path
 from models.translations import get_translation
+
 try:
     from llama_cpp import Llama
     LLAMA_CPP_AVAILABLE = True
-except ImportError:
+except ImportError as e:
+    import traceback
+    print("llama_cpp import error:", e)
+    traceback.print_exc()
     LLAMA_CPP_AVAILABLE = False
 
 class ModelLoadingWindow(tk.Toplevel):
@@ -72,23 +76,32 @@ class APIService:
     def _check_local_model_status(self, show_message=True, parent_window=None):
         # Check for local models when api_url is set to "models"
         models_dir = os.path.join(get_assets_path(), "models")
+        print(models_dir)
         
         # First check if the models directory exists
         if not os.path.exists(models_dir):
             self.server_connected = False
             self.using_local_model = False
             if show_message:
+                print("DEBUG: Model Directory Error")
+                print(models_dir)
                 messagebox.showerror(
                     get_translation(self.language, "server_status_title"),
                     get_translation(self.language, "local_models_dir_error_msg")
                 )
             return False
+
+        print("DEBUG: Model Exists")
         
         # Check for available GGUF models
         available_models = [f for f in os.listdir(models_dir) if f.endswith(".gguf") and LLAMA_CPP_AVAILABLE]
-
+        print(os.listdir(models_dir))
+        print(LLAMA_CPP_AVAILABLE)
+        print(available_models)
+        
         if not available_models:
             # No GGUF models available
+            print("DEBUG: No GGUF models available")
             self.server_connected = False
             self.using_local_model = False
             if show_message:
