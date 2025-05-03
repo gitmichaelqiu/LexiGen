@@ -86,7 +86,7 @@ LexiGen 现在支持直接使用本地GGUF模型，无需安装Ollama:
    - 将API URL下拉菜单设置为"GGUF Models"（默认选项之一）
    - 从下拉菜单中选择您下载的模型
 
-发型的 ".zip" 压缩包已经包含了 `qwen2.5-3b-instruct-q4_k_m.gguf`，遵循 `Qwen RESEARCH LICENSE AGREEMENT`。根据许可证，你**不可以**商用模型。用户应为未遵循许可证造成的后果负责
+发型的 ".zip" 压缩包已经包含了 `qwen2.5-1.5b-instruct-q4_k_m.gguf`，遵循 `Apache 2.0 License`。
 
 ### 安装
 
@@ -126,7 +126,7 @@ LexiGen 现在支持直接使用本地GGUF模型，无需安装Ollama:
 
 ## 🤝 贡献
 
-欢迎您的贡献！以下是您可以帮助的方式，请遵循 [GNU 通用公共许可证 v3.0](LICENSE)：
+欢迎您的贡献！以下是您可以帮助的方式，请遵循 [GNU GPL v3.0](LICENSE)：
 
 - 在 [Issues](https://github.com/gitmichaelqiu/LexiGen/issues) 中报告错误
 - 在 [Issues](https://github.com/gitmichaelqiu/LexiGen/issues) 中提出功能建议

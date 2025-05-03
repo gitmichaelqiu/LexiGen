@@ -89,7 +89,7 @@ LexiGen now supports using local GGUF models directly, without requiring Ollama:
    - Set the API URL dropdown to "GGUF Models" (one of the default options)
    - Select your downloaded model from the dropdown
 
-".zip" packages in [Releases]((https://github.com/gitmichaelqiu/LexiGen/releases/)) already contains `qwen2.5-3b-instruct-q4_k_m.gguf`, under `Qwen RESEARCH LICENSE AGREEMENT`. According to the `License`, you **CANNOT** use it for **COMMERCIAL USE**. The user shall be responsible for any consequences caused by using the model out of the LICENSE's rules.
+".zip" packages in [Releases]((https://github.com/gitmichaelqiu/LexiGen/releases/)) already contains `qwen2.5-1.5b-instruct-q4_k_m.gguf`, under `Apache 2.0 License`.
 
 ### Installation
 
