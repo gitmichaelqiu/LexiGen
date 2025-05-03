@@ -1095,30 +1095,42 @@ class SentenceWidgetManager(ttk.LabelFrame):
                         if "analysis" in sentence_data and sentence_data["analysis"]:
                             frame.analysis = sentence_data["analysis"]
             
-            messagebox.showinfo(
-                get_translation(self.language, "export_success_title"),
-                get_translation(self.language, "history_load_success")
-            )
-            
             # Update button states
             self._update_buttons_state()
             
-            # Configure sentence frames to stretch properly
-            for frame in self.sentence_widgets:
-                # Ensure each frame is configured to stretch horizontally
-                frame.grid(sticky=(tk.W, tk.E))
-                frame.columnconfigure(1, weight=1)  # Text column stretches
+            # Schedule layout refresh after current event processing completes
+            def delayed_layout_refresh():
+                # Configure sentence frames to stretch properly
+                for frame in self.sentence_widgets:
+                    # Ensure each frame is configured to stretch horizontally
+                    frame.grid(sticky=(tk.W, tk.E))
+                    frame.columnconfigure(1, weight=1)  # Text column stretches
+                    
+                    # Update text widgets explicitly
+                    for child in frame.winfo_children():
+                        if isinstance(child, tk.Text):
+                            child.grid(sticky=(tk.W, tk.E))
+                
+                # Force update of the canvas and container
+                self.sentences_container.update_idletasks()
+                self._on_frame_configure()
+                self.canvas.update_idletasks()
+                
+                # Get the current width of the widget and force the canvas to match
+                current_width = self.winfo_width() - 30  # Accounting for scrollbar and padding
+                self.canvas.itemconfig(self.canvas_frame, width=current_width)
+                
+                # Force another layout pass
+                self.update_idletasks()
             
-            # Force update of the canvas and container
-            self.sentences_container.update_idletasks()
-            self._on_frame_configure()
-            self.canvas.update_idletasks()
+            # Run layout refresh after a short delay
+            self.after(100, delayed_layout_refresh)
             
-            # Update canvas width to match container width if needed
-            canvas_width = self.canvas.winfo_width()
-            container_width = self.sentences_container.winfo_reqwidth()
-            if container_width > canvas_width:
-                self.canvas.itemconfig(self.canvas_frame, width=container_width)
+            # Show success message after layout is refreshed
+            self.after(200, lambda: messagebox.showinfo(
+                get_translation(self.language, "export_success_title"),
+                get_translation(self.language, "history_load_success")
+            ))
             
         except Exception as e:
             messagebox.showerror(
