@@ -548,40 +548,62 @@ class SentenceWidgetManager(ttk.LabelFrame):
 
     def show_all_words(self):
         """Show or hide all words in all sentences."""
-        if not self.sentence_widgets:
-            return
+        try:
+            if not self.sentence_widgets:
+                return
+                
+            # Determine the action based on any visible word
+            show_all = not any(hasattr(frame, 'word_visible') and frame.word_visible 
+                              for frame in self.sentence_widgets)
             
-        # Determine the action based on any visible word
-        show_all = not any(hasattr(widget.text_widget, 'word_visible') and 
-                          widget.text_widget.word_visible 
-                          for widget in self.sentence_widgets)
-        
-        # Update button text
-        self.show_all_btn.configure(
-            text=get_translation(self.language, "hide_all" if show_all else "show_all")
-        )
-        
-        for widget in self.sentence_widgets:
-            if widget.winfo_exists():
-                text_widget = widget.text_widget
-                text_widget.configure(state="normal")
-                
-                if show_all:
-                    text_widget.delete("1.0", tk.END)
-                    text_widget.insert("1.0", text_widget.original_sentence)
-                    text_widget.show_button.configure(
-                        text=get_translation(self.language, "hide")
-                    )
-                    text_widget.word_visible = True
-                else:
-                    text_widget.delete("1.0", tk.END)
-                    text_widget.insert("1.0", text_widget.masked_sentence)
-                    text_widget.show_button.configure(
-                        text=get_translation(self.language, "show")
-                    )
-                    text_widget.word_visible = False
-                
-                text_widget.configure(state="disabled")
+            # Update button text
+            self.show_all_btn.configure(
+                text=get_translation(self.language, "hide_all" if show_all else "show_all")
+            )
+            
+            for frame in self.sentence_widgets:
+                if frame.winfo_exists():
+                    # Find the text widget and show button
+                    text_widget = None
+                    show_button = None
+                    
+                    for child in frame.winfo_children():
+                        if isinstance(child, tk.Text):
+                            text_widget = child
+                        elif isinstance(child, ttk.Frame):  # Buttons frame
+                            for button in child.winfo_children():
+                                if "show_button" in str(button):
+                                    show_button = button
+                                    break
+                    
+                    if text_widget and show_button:
+                        text_widget.configure(state="normal")
+                        
+                        if show_all:
+                            # Show original sentence
+                            text_widget.delete("1.0", tk.END)
+                            text_widget.insert("1.0", frame.original_sentence)
+                            show_button.configure(
+                                text=get_translation(self.language, "hide")
+                            )
+                            frame.word_visible = True
+                        else:
+                            # Show masked sentence
+                            masked_sentence = self._create_masked_sentence(frame.original_word, frame.original_sentence)
+                            text_widget.delete("1.0", tk.END)
+                            text_widget.insert("1.0", masked_sentence)
+                            show_button.configure(
+                                text=get_translation(self.language, "show")
+                            )
+                            frame.word_visible = False
+                        
+                        text_widget.configure(state="disabled")
+        except Exception as e:
+            print(f"Error in show_all_words: {e}")
+            # If we're running in a development environment, re-raise the error for debugging
+            import os
+            if os.environ.get('LEXIGEN_DEBUG'):
+                raise
 
     def clear_sentences(self):
         """Delete all sentences."""
@@ -615,13 +637,16 @@ class SentenceWidgetManager(ttk.LabelFrame):
 
     def _copy_sentence(self, text_widget):
         """Copy sentence to clipboard."""
-        # Check if the word is visible and copy accordingly
-        if hasattr(text_widget, 'word_visible') and text_widget.word_visible:
+        # Find the parent frame
+        frame = text_widget.master
+        
+        # Get the appropriate sentence based on visibility
+        if hasattr(frame, 'word_visible') and frame.word_visible:
             # Copy the original sentence with filled blanks
-            sentence = text_widget.original_sentence
+            sentence = frame.original_sentence
         else:
-            # Copy the masked sentence with blanks
-            sentence = text_widget.masked_sentence
+            # Copy the masked sentence with blanks (what's currently displayed)
+            sentence = text_widget.get("1.0", "end-1c")
         
         # Strip any trailing newlines or spaces
         sentence = sentence.strip()
@@ -630,20 +655,22 @@ class SentenceWidgetManager(ttk.LabelFrame):
         self.clipboard_clear()
         self.clipboard_append(sentence)
         
-        # Show brief visual feedback using the parent widget's status
-        for child in text_widget.master.winfo_children():
-            if isinstance(child, ttk.Button) and child.cget("text") == get_translation(self.language, "copy"):
-                original_text = child.cget("text")
-                child.configure(text=get_translation(self.language, "checkmark"))
-                
-                # Reset the button text after a short delay
-                def reset_text():
-                    if child.winfo_exists():
-                        child.configure(text=original_text)
-                
-                # Schedule reset after 1 second
-                self.after(1000, reset_text)
-                break
+        # Show brief visual feedback on the copy button
+        for child in frame.winfo_children():
+            if isinstance(child, ttk.Frame):  # Buttons frame
+                for button in child.winfo_children():
+                    if "copy_button" in str(button):
+                        original_text = button.cget("text")
+                        button.configure(text=get_translation(self.language, "checkmark"))
+                        
+                        # Reset the button text after a short delay
+                        def reset_text():
+                            if button.winfo_exists():
+                                button.configure(text=original_text)
+                        
+                        # Schedule reset after 1 second
+                        self.after(1000, reset_text)
+                        break
 
     def _update_buttons_state(self):
         has_sentences = len(self.sentence_widgets) > 0
@@ -825,39 +852,41 @@ class SentenceWidgetManager(ttk.LabelFrame):
             if not frame.winfo_exists():
                 continue
             
-            # Update show/hide button based on current visibility state
-            if hasattr(frame.text_widget, 'show_button'):
-                if frame.text_widget.word_visible:
-                    frame.text_widget.show_button.configure(text=get_translation(language, "hide"))
-                else:
-                    frame.text_widget.show_button.configure(text=get_translation(language, "show"))
+            # Find the text widget and buttons
+            text_widget = None
+            show_button = None
+            copy_button = None
+            regen_button = None
+            menu_button = None
             
-            # Find the buttons frame - typically the frame grid positioned at column 2
-            buttons_frame = None
             for child in frame.winfo_children():
-                if isinstance(child, ttk.Frame) and child.grid_info().get('column') == 2:
-                    buttons_frame = child
-                    break
-                
-            if not buttons_frame:
-                continue
+                if isinstance(child, tk.Text):
+                    text_widget = child
+                elif isinstance(child, ttk.Frame):  # Buttons frame
+                    for button in child.winfo_children():
+                        if "show_button" in str(button):
+                            show_button = button
+                        elif "copy_button" in str(button):
+                            copy_button = button
+                        elif "regen_button" in str(button):
+                            regen_button = button
+                        elif "menu_button" in str(button):
+                            menu_button = button
             
-            # Update all buttons in the frame
-            for button in buttons_frame.winfo_children():
-                if not isinstance(button, ttk.Button):
-                    continue
-                
-                # Use button names to identify them
-                button_name = str(button).split(".")[-1]
-                
-                if "copy_button" in button_name:
-                    button.configure(text=get_translation(language, "copy"))
-                    
-                elif "regen_button" in button_name:
-                    button.configure(text=get_translation(language, "regenerate_button"))
-                    
-                elif "menu_button" in button_name:
-                    button.configure(text=get_translation(language, "menu_button"))
+            # Update show/hide button based on current visibility state
+            if show_button:
+                if hasattr(frame, 'word_visible') and frame.word_visible:
+                    show_button.configure(text=get_translation(language, "hide"))
+                else:
+                    show_button.configure(text=get_translation(language, "show"))
+            
+            # Update other buttons
+            if copy_button:
+                copy_button.configure(text=get_translation(language, "copy"))
+            if regen_button:
+                regen_button.configure(text=get_translation(language, "regenerate_button"))
+            if menu_button:
+                menu_button.configure(text=get_translation(language, "menu_button"))
 
     def _show_main_menu(self):
         """Show the main menu for the sentence frame."""
