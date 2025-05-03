@@ -126,6 +126,17 @@ class APIService:
                             if loading_window.winfo_exists():
                                 loading_window.after(100, loading_window.destroy)
                                 
+                            # Update UI - first in main window's settings panel
+                            if parent_window and hasattr(parent_window, 'update_server_status_display'):
+                                parent_window.after(200, parent_window.update_server_status_display)
+                            
+                            # Then also in the settings panel
+                            if hasattr(parent_window, 'settings_panel') and hasattr(parent_window.settings_panel, 'status_label'):
+                                parent_window.after(150, lambda: parent_window.settings_panel.status_label.config(
+                                    text=get_translation(self.language, "server_status_connected"),
+                                    foreground="green"
+                                ))
+                                
                             if show_message:
                                 if parent_window:
                                     parent_window.after(200, lambda: messagebox.showinfo(
@@ -139,6 +150,17 @@ class APIService:
                             # Close loading window from main thread
                             if loading_window.winfo_exists():
                                 loading_window.after(100, loading_window.destroy)
+                                
+                            # Update UI for failed status
+                            if parent_window and hasattr(parent_window, 'update_server_status_display'):
+                                parent_window.after(200, parent_window.update_server_status_display)
+                            
+                            # Then also in the settings panel
+                            if hasattr(parent_window, 'settings_panel') and hasattr(parent_window.settings_panel, 'status_label'):
+                                parent_window.after(150, lambda: parent_window.settings_panel.status_label.config(
+                                    text=get_translation(self.language, "server_status_not_connected"),
+                                    foreground="red"
+                                ))
                                 
                             if show_message:
                                 if parent_window:

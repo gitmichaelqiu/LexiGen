@@ -1,9 +1,9 @@
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox
-from models.config import VERSION, DEFAULT_CONFIG
+from models.config import VERSION, DEFAULT_CONFIG, get_assets_path
 from models.translations import load_translations, get_translation
 from models.word_processor import WordProcessor
-from services.api_service import APIService
+from services.api_service import APIService, ModelLoadingWindow
 from services.document_service import DocumentService
 from services.update_service import UpdateService
 from services.settings_service import SettingsService
@@ -13,6 +13,7 @@ from services.icon_service import create_icon
 import os
 import sys
 import ctypes
+import threading
 
 class MainWindow:
     def __init__(self, root):
@@ -72,15 +73,41 @@ class MainWindow:
         # Setup keyboard shortcuts
         self._setup_keyboard_shortcuts()
         
-        # Immediately check server status (not waiting for the scheduled checks)
-        self.api_service.check_server_status(show_message=False, parent_window=self.root)
+        # Create a loading window first if using local models
+        if api_url == "models":
+            # Check models directory to see if we have models to load
+            models_dir = os.path.join(get_assets_path(), "models")
+            available_models = []
+            
+            if os.path.exists(models_dir):
+                for file in os.listdir(models_dir):
+                    if file.endswith(".gguf"):
+                        available_models.append(file)
+            
+            # Only show loading window if we have models to load
+            if available_models:
+                selected_model = model if model in available_models else available_models[0]
+                # Don't create a separate loading window here, let the check_server_status function handle it
+                
+                # Check server status which will load the model in background and show its own loading window
+                self.api_service.check_server_status(show_message=True, parent_window=self.root)
+                
+                # Schedule initial setup after a delay to ensure model loading is complete
+                self.root.after(1000, self.initial_setup)
+                self.root.after(1200, lambda: self.check_for_updates(show_message=False))
+            else:
+                # No models to load, just check server status normally
+                self.api_service.check_server_status(show_message=False, parent_window=None)
+                self.root.after(100, self.initial_setup)
+                self.root.after(200, lambda: self.check_for_updates(show_message=False))
+        else:
+            # For remote API, check server status without loading window
+            self.api_service.check_server_status(show_message=False, parent_window=None)
+            self.root.after(100, self.initial_setup)
+            self.root.after(200, lambda: self.check_for_updates(show_message=False))
         
         # Setup close handler to save settings
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
-        
-        # Initial setup (scheduled to run after UI is ready)
-        self.root.after(100, self.initial_setup)
-        self.root.after(200, lambda: self.check_for_updates(show_message=False))
         
     def _setup_keyboard_shortcuts(self):
         """Setup keyboard shortcuts for various actions"""
