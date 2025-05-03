@@ -131,7 +131,9 @@ class SentenceWidgetManager(ttk.LabelFrame):
     
     def _on_canvas_configure(self, event):
         """Resize the inner frame to match the canvas."""
-        self.canvas.itemconfig(self.canvas_frame, width=event.width)
+        # Set width to 10px less than the event width to prevent menu button from being covered
+        adjusted_width = event.width - 10
+        self.canvas.itemconfig(self.canvas_frame, width=adjusted_width)
     
     def _on_resize(self, event):
         """Handle resize events to ensure frames stretch properly."""
@@ -155,6 +157,11 @@ class SentenceWidgetManager(ttk.LabelFrame):
         
         # Force canvas to update its layout
         self._on_frame_configure()
+        
+        # Apply width adjustment to match _on_canvas_configure
+        canvas_width = self.canvas.winfo_width() - 10
+        self.canvas.itemconfig(self.canvas_frame, width=canvas_width)
+        
         self.canvas.update_idletasks()
     
     def _on_mousewheel(self, event):
@@ -1117,7 +1124,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
                 self.canvas.update_idletasks()
                 
                 # Get the current width of the widget and force the canvas to match
-                current_width = self.winfo_width() - 30  # Accounting for scrollbar and padding
+                current_width = self.winfo_width() - 40  # Accounting for scrollbar, padding, and 10px space for menu button
                 self.canvas.itemconfig(self.canvas_frame, width=current_width)
                 
                 # Force another layout pass
