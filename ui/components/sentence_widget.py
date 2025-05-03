@@ -40,7 +40,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
 
         # Main menu button (replaced the export button)
         self.menu_btn = ttk.Button(self.buttons_frame, text=get_translation(language, "menu_button_main"), 
-                                   command=self._show_main_menu, state="disabled")
+                                   command=self._show_main_menu, state="normal")
         self.menu_btn.pack(side=tk.LEFT, padx=(0, 5))
         
         self.show_all_btn = ttk.Button(self.buttons_frame, text=get_translation(language, "show_all"), 
@@ -674,16 +674,18 @@ class SentenceWidgetManager(ttk.LabelFrame):
 
     def _update_buttons_state(self):
         has_sentences = len(self.sentence_widgets) > 0
-        state = "normal" if has_sentences else "disabled"
         
+        # Menu button should always be enabled to allow loading history
         if hasattr(self, 'menu_btn'):
-            self.menu_btn.configure(state=state)
-            
+            self.menu_btn.configure(state="normal")
+        
+        # Show all and delete buttons are only enabled when there are sentences
+        sentence_dependent_state = "normal" if has_sentences else "disabled"
         if hasattr(self, 'show_all_btn'):
-            self.show_all_btn.configure(state=state)
+            self.show_all_btn.configure(state=sentence_dependent_state)
             
         if hasattr(self, 'delete_btn'):
-            self.delete_btn.configure(state=state)
+            self.delete_btn.configure(state=sentence_dependent_state)
         
         if self.on_sentences_changed:
             self.on_sentences_changed(has_sentences)
@@ -893,19 +895,22 @@ class SentenceWidgetManager(ttk.LabelFrame):
         # Create menu
         menu = tk.Menu(self, tearoff=0)
         
-        # Add Export to Word option
+        # Add Export to Word option (disabled if no sentences)
+        has_sentences = len(self.sentence_widgets) > 0
         menu.add_command(
             label=get_translation(self.language, "export_docx"),
-            command=self.export_docx
+            command=self.export_docx,
+            state="normal" if has_sentences else "disabled"
         )
         
-        # Add Save History option with Ctrl+S shortcut
+        # Add Save History option (disabled if no sentences)
         menu.add_command(
             label=f"{get_translation(self.language, 'save_history')}",
-            command=self.save_history
+            command=self.save_history,
+            state="normal" if has_sentences else "disabled"
         )
         
-        # Add Load History option with Ctrl+L shortcut
+        # Add Load History option (always enabled)
         menu.add_command(
             label=f"{get_translation(self.language, 'load_history')}",
             command=self.load_history
