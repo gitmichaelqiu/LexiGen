@@ -19,6 +19,9 @@ class MainWindow:
     def __init__(self, root):
         self.root = root
         self.root.title("LexiGen")
+        
+        # Flag to track initial startup
+        self.is_initial_startup = True
 
         width = 1100
         height = 800
@@ -90,6 +93,8 @@ class MainWindow:
                 # Don't create a separate loading window here, let the check_server_status function handle it
                 
                 # Check server status which will load the model in background and show its own loading window
+                # Pass the initial startup flag to control success message display
+                self.api_service.is_initial_startup = self.is_initial_startup
                 self.api_service.check_server_status(show_message=True, parent_window=self.root)
                 
                 # Schedule initial setup after a delay to ensure model loading is complete
@@ -105,6 +110,9 @@ class MainWindow:
             self.api_service.check_server_status(show_message=False, parent_window=None)
             self.root.after(100, self.initial_setup)
             self.root.after(200, lambda: self.check_for_updates(show_message=False))
+        
+        # Reset the initial startup flag after the application is fully loaded
+        self.root.after(1500, self._reset_initial_startup_flag)
         
         # Setup close handler to save settings
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -492,3 +500,9 @@ class MainWindow:
             if hasattr(self, '_context_dialog') and self._context_dialog.winfo_exists():
                 self._context_dialog.destroy()
         return "break"  # Prevent the event from propagating
+
+    def _reset_initial_startup_flag(self):
+        """Reset the initial startup flag after application is loaded."""
+        self.is_initial_startup = False
+        if hasattr(self.api_service, 'is_initial_startup'):
+            self.api_service.is_initial_startup = False

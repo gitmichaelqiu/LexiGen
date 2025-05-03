@@ -55,6 +55,7 @@ class APIService:
         self.local_model = None
         self.using_local_model = False
         self.root = None  # Will be set to the root window
+        self.is_initial_startup = False  # Flag to track initial startup
 
     def check_server_status(self, show_message=True, parent_window=None):
         # Check if using "models" as API URL to use local models
@@ -139,10 +140,12 @@ class APIService:
                                 
                             if show_message:
                                 if parent_window:
-                                    parent_window.after(200, lambda: messagebox.showinfo(
-                                        get_translation(self.language, "server_status_title"),
-                                        get_translation(self.language, "local_model_loaded_msg").format(model=self.model)
-                                    ))
+                                    # Skip success message during initial startup
+                                    if not hasattr(self, 'is_initial_startup') or not self.is_initial_startup:
+                                        parent_window.after(200, lambda: messagebox.showinfo(
+                                            get_translation(self.language, "server_status_title"),
+                                            get_translation(self.language, "local_model_loaded_msg").format(model=self.model)
+                                        ))
                         except Exception as e:
                             self.server_connected = False
                             self.using_local_model = False
