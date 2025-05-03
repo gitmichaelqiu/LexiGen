@@ -15,6 +15,7 @@ class SettingsService:
         self.external_tense_prompt = None
         self.external_analysis_tense_prompt = None
         self.external_context_attachment_prompt = None
+        self.external_api_url = None
         self.load_settings()
 
     
@@ -36,6 +37,9 @@ class SettingsService:
                         self.external_analysis_tense_prompt = self.settings.get('analysis_tense_prompt')
                     elif key == 'context_attachment_prompt':
                         self.external_context_attachment_prompt = self.settings.get('context_attachment_prompt')
+                    elif key == 'api_url':
+                        if key != value or key != 'models':
+                            self.external_api_url = self.settings.get('api_url')
                     if key not in self.settings or key in ['generation_prompt', 'analysis_prompt', 'tense_prompt', 'analysis_tense_prompt', 'context_attachment_prompt']:
                         self.settings[key] = value
             except Exception as e:
@@ -57,6 +61,8 @@ class SettingsService:
         self.settings['tense_prompt'] = self.external_tense_prompt
         self.settings['analysis_tense_prompt'] = self.external_analysis_tense_prompt
         self.settings['context_attachment_prompt'] = self.external_context_attachment_prompt
+        if self.external_api_url:
+            self.settings['api_url'] = self.external_api_url
         try:
             # Make a copy of settings and filter out excluded settings
             settings_to_save = {k: v for k, v in self.settings.items()}

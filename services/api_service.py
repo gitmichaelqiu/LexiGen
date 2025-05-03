@@ -85,7 +85,7 @@ class APIService:
         
         # Check for available GGUF models
         available_models = [f for f in os.listdir(models_dir) if f.endswith(".gguf") and LLAMA_CPP_AVAILABLE]
-        
+
         if not available_models:
             # No GGUF models available
             self.server_connected = False
@@ -98,7 +98,7 @@ class APIService:
             return False
             
         # If no model selected but we have models available, set first one as current model
-        if not self.model and available_models:
+        if not self.model or self.model not in available_models:
             self.model = available_models[0]
             
         # Now we should have a model selected
