@@ -36,8 +36,8 @@ def find_libllama():
         if os.path.exists(bundled_path):
             return bundled_path
     return None
+
 libllama_path = find_libllama()
-print(f'fuckme{libllama_path}')
 if libllama_path:
     os.environ['LLAMA_CPP_LIB'] = libllama_path
 
