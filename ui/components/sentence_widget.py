@@ -376,7 +376,11 @@ class SentenceWidgetManager(ttk.LabelFrame):
                     # Create progress dialog
                     progress_window = tk.Toplevel(self)
                     progress_window.title(get_translation(self.language, "generating_analyses"))
-                    progress_window.geometry("400x100")
+                    width = 400
+                    height = 100
+                    x = (self.winfo_screenwidth() // 2) - (width // 2)
+                    y = (self.winfo_screenheight() // 2) - (height // 2)
+                    progress_window.geometry(f"{width}x{height}+{x}+{y}")
                     progress_window.transient(self)
                     progress_window.grab_set()
                     progress_window.resizable(False, False)
@@ -647,11 +651,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
                         
                         text_widget.configure(state="disabled")
         except Exception as e:
-            print(f"Error in show_all_words: {e}")
-            # If we're running in a development environment, re-raise the error for debugging
-            import os
-            if os.environ.get('LEXIGEN_DEBUG'):
-                raise
+            pass
 
     def clear_sentences(self):
         """Delete all sentences."""

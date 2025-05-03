@@ -291,7 +291,6 @@ class UpdateService:
             
         except Exception as e:
             messagebox.showerror(
-                #Debugging
                 #get_translation(self.language, "update_error"),
                 #get_translation(self.language, "update_error_msg")
                 "Update Error",
@@ -535,16 +534,7 @@ cd "{dest_dir}"
             # For portable app, we need to replace the current executable
             current_exe_path = sys.executable if getattr(sys, 'frozen', False) else None
             
-            # Write debug info to file
-            debug_file = os.path.join(tempfile.gettempdir(), "lexigen_update_debug.log")
-            with open(debug_file, 'w') as f:
-                f.write(f"Debug: Current executable path: {current_exe_path}\n")
-                f.write(f"Debug: Is frozen: {getattr(sys, 'frozen', False)}\n")
-            
             if not current_exe_path:
-                with open(debug_file, 'a') as f:
-                    f.write("Debug: Not running as frozen executable\n")
-                    f.write(f"Debug: Running downloaded file: {self.downloaded_file}\n")
                 subprocess.Popen([self.downloaded_file])
                 if self.root:
                     self.root.after(500, self.root.destroy)
@@ -555,44 +545,25 @@ cd "{dest_dir}"
             # 2. Copy the new exe over the old one
             # 3. Start the new exe
             batch_script = f"""@echo off
-echo Debug: Starting update process
-echo Debug: Current exe: {current_exe_path}
-echo Debug: New exe: {self.downloaded_file}
 timeout /t 2 /nobreak
-echo Debug: Copying new exe...
 copy /Y "{self.downloaded_file}" "{current_exe_path}"
-echo Debug: Starting new exe...
 start "" "{current_exe_path}"
-echo Debug: Cleaning up...
 del "%~f0"
 """
-            with open(debug_file, 'a') as f:
-                f.write(f"Debug: Generated batch script:\n{batch_script}\n")
             
             # Write the batch script to a temporary file
             script_path = os.path.join(tempfile.gettempdir(), "lexigen_update.bat")
-            with open(debug_file, 'a') as f:
-                f.write(f"Debug: Writing batch script to: {script_path}\n")
             with open(script_path, 'w') as f:
                 f.write(batch_script)
             
             # Execute the batch script
-            with open(debug_file, 'a') as f:
-                f.write("Debug: Executing batch script\n")
             subprocess.Popen(["cmd", "/c", script_path], shell=True)
             
             # Exit the app
             if self.root:
-                with open(debug_file, 'a') as f:
-                    f.write("Debug: Scheduling app exit\n")
                 self.root.after(500, self.root.destroy)
             
         except Exception as e:
-            with open(debug_file, 'a') as f:
-                f.write(f"Debug: Error during update: {str(e)}\n")
-                f.write(f"Debug: Error type: {type(e)}\n")
-                import traceback
-                f.write(f"Debug: Traceback:\n{traceback.format_exc()}\n")
             messagebox.showerror(
                 get_translation(self.language, "update_error"),
                 get_translation(self.language, "update_error_msg")
