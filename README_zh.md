@@ -15,7 +15,6 @@
 
 <img width="1318" alt="Screenshot 2025-05-01 at 19 30 10" src="https://github.com/user-attachments/assets/c293c99e-0d28-41b3-bbfa-13102c44f6e8" />
 
-
 ## 🎯 概述
 
 LexiGen 是一款 **开源** 的首字母填空生成器，**零成本** 使用本地 Ollama AI。
@@ -61,6 +60,17 @@ LexiGen 是一款 **开源** 的首字母填空生成器，**零成本** 使用�
   ```bash
   ollama pull qwen2.5:3b
   ```
+
+### 替代方案: 使用本地GGUF模型
+
+LexiGen 现在支持直接使用本地GGUF模型，无需安装Ollama:
+
+1. 从Hugging Face下载GGUF模型，并放置在`LexiGenAssets/models`目录中
+2. 启动LexiGen并:
+   - 将API URL下拉菜单设置为"GGUF Models"（默认选项之一）
+   - 从下拉菜单中选择您下载的模型
+
+详细说明请参见 [本地模型指南](docs/LOCAL_MODELS_zh.md).
 
 ### 安装
 

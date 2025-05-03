@@ -1,9 +1,9 @@
 import tkinter as tk
 from tkinter import ttk, scrolledtext, messagebox
-from models.config import VERSION, DEFAULT_CONFIG
+from models.config import VERSION, DEFAULT_CONFIG, get_assets_path
 from models.translations import load_translations, get_translation
 from models.word_processor import WordProcessor
-from services.api_service import APIService
+from services.api_service import APIService, ModelLoadingWindow
 from services.document_service import DocumentService
 from services.update_service import UpdateService
 from services.settings_service import SettingsService
@@ -13,13 +13,22 @@ from services.icon_service import create_icon
 import os
 import sys
 import ctypes
+import threading
 
 class MainWindow:
     def __init__(self, root):
         self.root = root
         self.root.title("LexiGen")
-        self.root.geometry("1100x800")
         
+        # Flag to track initial startup
+        self.is_initial_startup = True
+
+        width = 1100
+        height = 800
+        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.root.winfo_screenheight() // 2) - (height // 2)
+        self.root.geometry(f"{width}x{height}+{x}+{y}")
+
         if sys.platform == 'win32':
             # Add window icon
             try:
@@ -46,7 +55,8 @@ class MainWindow:
         
         # Get API URL and model from settings
         api_url = self.settings_service.get_setting("api_url", self.settings_service.get_settings("api_url"))
-        self.api_service = APIService(self.language, api_url, settings_service=self.settings_service)
+        self.api_service = APIService(self.language, api_url, self.settings_service, self.word_processor)
+        self.api_service.root = self.root  # Set root window reference
         model = self.settings_service.get_setting("model", self.settings_service.get_settings("model"))
         self.api_service.model = model
         
@@ -55,6 +65,8 @@ class MainWindow:
         # Set root window for the update service
         self.update_service.set_root(self.root)
         
+        self.context = None
+
         # Load translations
         self.available_languages = load_translations()
         
@@ -64,15 +76,46 @@ class MainWindow:
         # Setup keyboard shortcuts
         self._setup_keyboard_shortcuts()
         
-        # Immediately check server status (not waiting for the scheduled checks)
-        self.api_service.check_server_status(show_message=False)
+        # Create a loading window first if using local models
+        if api_url == "models":
+            # Check models directory to see if we have models to load
+            models_dir = os.path.join(get_assets_path(), "models")
+            available_models = []
+            
+            if os.path.exists(models_dir):
+                for file in os.listdir(models_dir):
+                    if file.endswith(".gguf"):
+                        available_models.append(file)
+            
+            # Only show loading window if we have models to load
+            if available_models:
+                selected_model = model if model in available_models else available_models[0]
+                # Don't create a separate loading window here, let the check_server_status function handle it
+                
+                # Check server status which will load the model in background and show its own loading window
+                # Pass the initial startup flag to control success message display
+                self.api_service.is_initial_startup = self.is_initial_startup
+                self.api_service.check_server_status(show_message=True, parent_window=self.root)
+                
+                # Schedule initial setup after a delay to ensure model loading is complete
+                self.root.after(1000, self.initial_setup)
+                self.root.after(1200, lambda: self.check_for_updates(show_message=False))
+            else:
+                # No models to load, just check server status normally
+                self.api_service.check_server_status(show_message=False, parent_window=None)
+                self.root.after(100, self.initial_setup)
+                self.root.after(200, lambda: self.check_for_updates(show_message=False))
+        else:
+            # For remote API, check server status without loading window
+            self.api_service.check_server_status(show_message=False, parent_window=None)
+            self.root.after(100, self.initial_setup)
+            self.root.after(200, lambda: self.check_for_updates(show_message=False))
+        
+        # Reset the initial startup flag after the application is fully loaded
+        self.root.after(1500, self._reset_initial_startup_flag)
         
         # Setup close handler to save settings
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
-        
-        # Initial setup (scheduled to run after UI is ready)
-        self.root.after(100, self.initial_setup)
-        self.root.after(200, lambda: self.check_for_updates(show_message=False))
         
     def _setup_keyboard_shortcuts(self):
         """Setup keyboard shortcuts for various actions"""
@@ -83,13 +126,22 @@ class MainWindow:
         self.word_input.bind("<Return>", self._handle_enter_key)
         
         # Bind Ctrl/Cmd + Enter to generate
-        self.word_input.bind(f"<{modifier}-Return>", lambda event: self.generate_sentences(append=False))
+        self.root.bind(f"<{modifier}-Return>", lambda event: self.generate_sentences(append=False))
         
         # Bind Ctrl/Cmd + E to export
         self.root.bind(f"<{modifier}-e>", lambda event: self.sentence_manager.export_docx())
         
+        # Bind Ctrl/Cmd + S to save history
+        self.root.bind(f"<{modifier}-s>", lambda event: self.sentence_manager.save_history())
+        
+        # Bind Ctrl/Cmd + L to load history
+        self.root.bind(f"<{modifier}-l>", lambda event: self.sentence_manager.load_history())
+        
         # Bind Ctrl/Cmd + / to show/hide all
         self.root.bind(f"<{modifier}-slash>", lambda event: self.sentence_manager.show_all_words())
+        
+        # Bind Ctrl/Cmd + T to toggle context window
+        self.root.bind(f"<{modifier}-t>", self._toggle_context_window)
     
     def _handle_enter_key(self, event):
         """Handle Enter key in word input - append or generate based on sentences state"""
@@ -135,13 +187,16 @@ class MainWindow:
         buttons_frame = ttk.Frame(self.input_frame)
         buttons_frame.grid(row=1, column=1, sticky=tk.E, padx=5)
         
+        self.context_btn = ttk.Button(buttons_frame, text=get_translation(self.language, "context_button"),
+                                    command=self._show_context_dialog)
         self.generate_btn = ttk.Button(buttons_frame, text=get_translation(self.language, "generate"), 
                                      command=lambda: self.generate_sentences(append=False))
         self.append_btn = ttk.Button(buttons_frame, text=get_translation(self.language, "append"), 
                                    command=lambda: self.generate_sentences(append=True))
         
-        # Initially only show generate button and ensure append is disabled
-        self.generate_btn.pack(side=tk.LEFT)
+        # Initially only show context and generate buttons
+        self.context_btn.pack(side=tk.LEFT)
+        self.generate_btn.pack(side=tk.LEFT, padx=(5, 0))
         self.append_btn.configure(state="disabled")  # Explicitly disable the append button
         self.append_btn.pack_forget()
         
@@ -160,7 +215,8 @@ class MainWindow:
             self.language,
             self.word_processor,
             self.api_service,
-            self.on_sentences_changed
+            self.on_sentences_changed,
+            self
         )
         self.sentence_manager.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
         
@@ -213,18 +269,27 @@ class MainWindow:
         
         # Save language setting
         self.settings_service.set_setting("language", new_language)
+        
+        # Check server status after language change
+        self.api_service.check_server_status(show_message=False, parent_window=self.root)
+        self.update_server_status_display()
+        
+        # Rebind keyboard shortcuts after language change
+        self._setup_keyboard_shortcuts()
     
     def update_ui_texts(self):
         self.input_frame.configure(text=get_translation(self.language, "input_words"))
         self.words_label.configure(text=get_translation(self.language, "enter_words"))
         self.generate_btn.configure(text=get_translation(self.language, "generate"))
         self.append_btn.configure(text=get_translation(self.language, "append"))
+        self.context_btn.configure(text=get_translation(self.language, "context_button"))
         self.progress_label.configure(text=get_translation(self.language, "generating"))
         
         self.settings_panel.update_texts(self.language)
         self.sentence_manager.update_texts(self.language)
     
     def generate_sentences(self, append=False):
+        # Get prompt from settings, fallback to default if None
         prompt = self.settings_service.get_settings("generation_prompt")
 
         if r'{word}' not in prompt:
@@ -260,7 +325,21 @@ class MainWindow:
         sentences_generated = 0
         
         for i, word in enumerate(words):
-            sentence = self.api_service.generate_sentence(word, prompt)
+            # Add context to prompt if available
+            current_prompt = prompt
+            if hasattr(self, 'context') and self.context:
+                context_attachment_prompt = self.settings_service.get_settings("context_attachment_prompt")
+
+                if r'{context}' not in context_attachment_prompt:
+                    messagebox.showerror(
+                        get_translation(self.language, "error_title"),
+                        get_translation(self.language, "invalid_prompt_format")
+                    )
+                    return
+
+                current_prompt = context_attachment_prompt.format(context=self.context) + "\n" + prompt
+            
+            sentence = self.api_service.generate_sentence(word, current_prompt)
             if sentence:
                 self.sentence_manager.add_sentence(word, sentence)
                 sentences_generated += 1
@@ -299,23 +378,32 @@ class MainWindow:
 
     def on_api_url_change(self, new_url):
         """Called when API URL is changed."""
-        # Update API service
-        self.api_service.api_url = new_url
+        # Update API service (already done in the settings panel)
+        # self.api_service.api_url = new_url
         
-        # Save immediately to settings
-        self.settings_service.set_setting("api_url", new_url)
+        # Save immediately to settings only if it's one of the default options
+        # or already exists in settings (non-default custom URL)
+        current_api_url = self.settings_service.get_setting("api_url")
+        default_urls = ["http://127.0.0.1:11434/api/generate", "models"]
         
-        # Check server status after URL change
-        self.root.after(100, lambda: self.api_service.check_server_status(show_message=False))
-        self.root.after(200, lambda: self.update_server_status_display())
+        if new_url in default_urls or new_url == current_api_url:
+            self.settings_service.set_setting("api_url", new_url)
+        
+        # No need to check server status here - already done in settings panel
+        # self.root.after(100, lambda: self.api_service.check_server_status(show_message=False, parent_window=self.root))
+        self.root.after(100, lambda: self.update_server_status_display())
 
     def on_model_change(self, new_model):
         """Called when model is changed."""
-        # Update API service
-        self.api_service.model = new_model
+        # Update API service (already done in the settings panel)
+        # self.api_service.model = new_model
         
         # Save immediately to settings
         self.settings_service.set_setting("model", new_model)
+        
+        # No need to check server status here - already done in settings panel
+        # self.root.after(100, lambda: self.api_service.check_server_status(show_message=False, parent_window=self.root))
+        self.root.after(100, lambda: self.update_server_status_display())
 
     def update_server_status_display(self):
         """Update the server status display to reflect current state."""
@@ -333,15 +421,88 @@ class MainWindow:
     def on_close(self):
         """Save all current settings before closing the application."""
         # Ensure we save the most up-to-date settings
-        current_settings = {
-            "language": self.language,
-            "api_url": self.api_service.api_url,
-            "model": self.api_service.model
-        }
+        # For API URL, only save if it's one of the defaults or an existing custom URL
+        current_api_url = self.settings_service.get_setting("api_url")
+        default_urls = ["http://127.0.0.1:11434/api/generate", "models"]
+        
+        settings_to_save = {"language": self.language}
+        
+        # Only update API URL if it's a default one or matches the existing custom URL
+        if self.api_service.api_url in default_urls or self.api_service.api_url == current_api_url:
+            settings_to_save["api_url"] = self.api_service.api_url
+        
+        # Always save the model
+        settings_to_save["model"] = self.api_service.model
         
         # Update all settings at once
-        self.settings_service.update_settings(current_settings)
+        self.settings_service.update_settings(settings_to_save)
         
         # Final save
         self.settings_service.save_settings()
         self.root.destroy()
+
+    def _toggle_context_window(self, event=None):
+        """Toggle the context window - open if closed, save and close if open."""
+        if hasattr(self, '_context_dialog') and self._context_dialog.winfo_exists():
+            # Window is open, save and close it
+            self._save_context()
+            self._context_dialog.destroy()
+        else:
+            # Window is not open, open it
+            self._show_context_dialog()
+    
+    def _show_context_dialog(self):
+        """Show dialog for entering context."""
+        self._context_dialog = tk.Toplevel(self.root)
+        self._context_dialog.title(get_translation(self.language, "context"))
+        width = 500
+        height = 300
+        x = (self._context_dialog.winfo_screenwidth() // 2) - (width // 2)
+        y = (self._context_dialog.winfo_screenheight() // 2) - (height // 2)
+        self._context_dialog.geometry(f"{width}x{height}+{x}+{y}")
+        self._context_dialog.transient(self.root)
+        self._context_dialog.grab_set()
+
+        # Bind Ctrl/Cmd + T to save and close
+        modifier = "Command" if sys.platform == "darwin" else "Control"
+        self._context_dialog.bind(f"<{modifier}-t>", lambda e: self._save_context())
+        
+        # Create main frame
+        main_frame = ttk.Frame(self._context_dialog, padding="10")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Context label and text widget
+        ttk.Label(main_frame, text=get_translation(self.language, "enter_context")).pack(anchor=tk.W)
+        self._context_text = scrolledtext.ScrolledText(main_frame, height=5, width=40)
+        self._context_text.pack(fill=tk.BOTH, expand=True, pady=(5, 10))
+        
+        # Load existing context if any
+        if hasattr(self, 'context') and self.context:
+            self._context_text.insert("1.0", self.context)
+        
+        # Buttons frame
+        buttons_frame = ttk.Frame(main_frame)
+        buttons_frame.pack(fill=tk.X)
+        
+        ttk.Button(buttons_frame, text=get_translation(self.language, "save"), 
+                  command=self._save_context).pack(side=tk.LEFT)
+        ttk.Button(buttons_frame, text=get_translation(self.language, "cancel"), 
+                  command=self._context_dialog.destroy).pack(side=tk.RIGHT)
+    
+    def _save_context(self, event=None):
+        """Save the current context and close the dialog."""
+        if hasattr(self, '_context_text') and self._context_text.winfo_exists():
+            context = self._context_text.get("1.0", tk.END).strip()
+            if context:
+                self.context = context
+            else:
+                self.context = None
+            if hasattr(self, '_context_dialog') and self._context_dialog.winfo_exists():
+                self._context_dialog.destroy()
+        return "break"  # Prevent the event from propagating
+
+    def _reset_initial_startup_flag(self):
+        """Reset the initial startup flag after application is loaded."""
+        self.is_initial_startup = False
+        if hasattr(self.api_service, 'is_initial_startup'):
+            self.api_service.is_initial_startup = False

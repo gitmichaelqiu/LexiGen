@@ -70,6 +70,15 @@ Want to share the sentence set? Press "Export to Word" or "Ctrl/Cmd + E" to expo
    ollama pull qwen2.5:3b
    ```
 
+### Alternative: Using Local GGUF Models
+
+LexiGen now supports using local GGUF models directly, without requiring Ollama:
+
+1. Download a GGUF model from Hugging Face and place it in the `LexiGenAssets/models` directory
+2. Launch LexiGen and:
+   - Set the API URL dropdown to "GGUF Models" (one of the default options)
+   - Select your downloaded model from the dropdown
+
 ### Installation
 
 1. Download LexiGen from the [releases page](https://github.com/gitmichaelqiu/LexiGen/releases/)

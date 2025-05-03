@@ -2,7 +2,7 @@ import os
 import sys
 
 # Version information
-VERSION = "1.5.1"
+VERSION = "1.6.0"
 
 # Default configuration
 DEFAULT_CONFIG = {
@@ -10,7 +10,9 @@ DEFAULT_CONFIG = {
     "model": "qwen2.5:3b",
     "language": "English",
     "generation_prompt": "Create a simple sentence using the word '{word}'. The sentence should be clear and educational.",
+    "context_attachment_prompt": "Complete the generation task with the context: \n{context}\nGeneration task:\n",
     "analysis_prompt": "Analyze the grammatical usage of '{word}' in this sentence: '{sentence}'\nFocus on:\n1. Tense (e.g., Present Simple, Past Perfect)\n2. Voice (Active/Passive)\n3. Mood (Indicative/Subjunctive)\n4. Function (e.g., Subject, Object, Modifier)\n\nKeep the analysis concise and technical. Output in 1 line. Example format:\n\"Present Simple, Active Voice. Functions as the subject of the sentence.\" ",
+    "analysis_tense_prompt": "Analyze the grammatical usage of '{word}' in this sentence: '{sentence}', hint: this sentence used {tense} tense.\nFocus on:\n1. Tense (e.g., Present Simple, Past Perfect)\n2. Voice (Active/Passive)\n3. Mood (Indicative/Subjunctive)\n4. Function (e.g., Subject, Object, Modifier)\n\nKeep the analysis concise and technical. Output in 1 line. Example format:\n\"Present Simple, Active Voice. Functions as the subject of the sentence.\" ",
     "tense_prompt": "Create a simple sentence using the word '{word}' using {tense} tense. The sentence should be clear and educational."
 }
 

@@ -7,6 +7,11 @@ from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 import platform
 from nltk import word_tokenize
+from models.config import DEFAULT_CONFIG
+import requests
+from tkinter import scrolledtext
+import yaml
+from datetime import datetime
 
 # Add these keys to both English and Chinese translations
 for language in TRANSLATIONS:
@@ -20,7 +25,7 @@ for language in TRANSLATIONS:
         TRANSLATIONS[language]["progress_indicator"] = "{0}/{1}"
 
 class SentenceWidgetManager(ttk.LabelFrame):
-    def __init__(self, parent, language, word_processor, api_service, on_sentences_changed=None):
+    def __init__(self, parent, language, word_processor, api_service, on_sentences_changed=None, main_window=None):
         super().__init__(parent, text=get_translation(language, "generated_sentences"), padding="5")
         self.language = language
         self.word_processor = word_processor
@@ -28,14 +33,16 @@ class SentenceWidgetManager(ttk.LabelFrame):
         self.sentence_widgets = []
         self.parent = parent
         self.on_sentences_changed = on_sentences_changed
+        self.main_window = main_window
         
         # Buttons Frame
         self.buttons_frame = ttk.Frame(self)
         self.buttons_frame.grid(row=0, column=0, sticky=tk.E, padx=5, pady=5)
 
-        self.export_btn = ttk.Button(self.buttons_frame, text=get_translation(language, "export_docx"), 
-                                   command=self.export_docx, state="disabled")
-        self.export_btn.pack(side=tk.LEFT, padx=(0, 5))
+        # Main menu button (replaced the export button)
+        self.menu_btn = ttk.Button(self.buttons_frame, text=get_translation(language, "menu_button_main"), 
+                                   command=self._show_main_menu, state="normal")
+        self.menu_btn.pack(side=tk.LEFT, padx=(0, 5))
         
         self.show_all_btn = ttk.Button(self.buttons_frame, text=get_translation(language, "show_all"), 
                                      command=self.show_all_words, state="disabled")
@@ -61,6 +68,9 @@ class SentenceWidgetManager(ttk.LabelFrame):
         
         self.sentences_container.bind('<Configure>', self._on_frame_configure)
         self.canvas.bind('<Configure>', self._on_canvas_configure)
+        
+        # Bind to resize event
+        self.bind('<Configure>', self._on_resize)
         
         # Platform specific mousewheel bindings
         self._bind_mouse_wheel()
@@ -107,11 +117,53 @@ class SentenceWidgetManager(ttk.LabelFrame):
     
     def _on_frame_configure(self, event=None):
         """Update the scrollregion to encompass the inner frame."""
+        # First, ensure the sentences_container is properly configured
+        if self.sentences_container.winfo_exists():
+            self.sentences_container.columnconfigure(0, weight=1)  # Make sure it uses full width
+            
+            # Make sure all sentence frames are properly configured
+            for frame in self.sentence_widgets:
+                if frame.winfo_exists():
+                    frame.grid(sticky=(tk.W, tk.E))
+                    frame.columnconfigure(1, weight=1)
+        
+        # Update the scroll region
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
     
     def _on_canvas_configure(self, event):
         """Resize the inner frame to match the canvas."""
-        self.canvas.itemconfig(self.canvas_frame, width=event.width)
+        # Set width to 10px less than the event width to prevent menu button from being covered
+        adjusted_width = event.width - 10
+        self.canvas.itemconfig(self.canvas_frame, width=adjusted_width)
+    
+    def _on_resize(self, event):
+        """Handle resize events to ensure frames stretch properly."""
+        # Skip if resize wasn't caused by a true window resize
+        if event.width == self._last_width if hasattr(self, '_last_width') else False:
+            return
+            
+        # Save current width for future comparisons
+        self._last_width = event.width
+        
+        # Update all sentence frames to ensure they stretch properly
+        for frame in self.sentence_widgets:
+            if frame.winfo_exists():
+                frame.grid(sticky=(tk.W, tk.E))
+                frame.columnconfigure(1, weight=1)
+                
+                # Ensure text widgets stretch to fill the frame
+                for child in frame.winfo_children():
+                    if isinstance(child, tk.Text):
+                        child.grid(sticky=(tk.W, tk.E))
+        
+        # Force canvas to update its layout
+        self._on_frame_configure()
+        
+        # Apply width adjustment to match _on_canvas_configure
+        canvas_width = self.canvas.winfo_width() - 10
+        self.canvas.itemconfig(self.canvas_frame, width=canvas_width)
+        
+        self.canvas.update_idletasks()
     
     def _on_mousewheel(self, event):
         """Legacy method, replaced by platform-specific methods."""
@@ -120,6 +172,10 @@ class SentenceWidgetManager(ttk.LabelFrame):
     def add_sentence(self, word, sentence):
         frame = ttk.Frame(self.sentences_container)
         frame.grid(sticky=(tk.W, tk.E), pady=2)
+        
+        # Store original word and sentence for later reference
+        frame.original_word = word
+        frame.original_sentence = sentence
         
         # Create a 3-column grid layout
         frame.columnconfigure(0, weight=0)  # Order number column fixed width
@@ -131,6 +187,9 @@ class SentenceWidgetManager(ttk.LabelFrame):
         order_label = ttk.Label(frame, text=f"{order_number}.", width=4)
         order_label.grid(row=0, column=0, sticky=tk.W, padx=(5, 0))
         
+        # Save order_label reference for updates
+        frame.order_label = order_label
+        
         # Create masked sentence
         masked_sentence = self._create_masked_sentence(word, sentence)
         
@@ -141,6 +200,9 @@ class SentenceWidgetManager(ttk.LabelFrame):
                             selectforeground=text_widget.cget("foreground"), 
                             inactiveselectbackground=text_widget.cget("background"))
         text_widget.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 5))
+        
+        # Ensure the parent frame properly configures column weights for stretching
+        frame.columnconfigure(1, weight=1)  # Make text column expandable
         
         # Bind to prevent text selection
         for seq in ["<Button-1>", "<B1-Motion>", "<Double-Button-1>", "<Triple-Button-1>"]:
@@ -200,22 +262,14 @@ class SentenceWidgetManager(ttk.LabelFrame):
         )
         menu_btn.pack(side=tk.LEFT)
         
-        # Store references
-        text_widget.original_sentence = sentence
-        text_widget.masked_sentence = masked_sentence
-        text_widget.word_visible = False
-        text_widget.show_button = show_btn
-        text_widget.original_word = original_word  # Store original word
-        frame.text_widget = text_widget
-        frame.menu_btn = menu_btn  # Store menu button reference
-        frame.order_label = order_label  # Store order label reference
+        # Store reference to menu button
+        frame.menu_btn = menu_btn
         
+        # Add the new frame to the list of sentence widgets
         self.sentence_widgets.append(frame)
-        self._update_buttons_state()
         
-        # Notify about sentence change
-        if self.on_sentences_changed:
-            self.on_sentences_changed(len(self.sentence_widgets) > 0)
+        # Update buttons state
+        self._update_buttons_state()
         
         return frame
     
@@ -247,18 +301,32 @@ class SentenceWidgetManager(ttk.LabelFrame):
         return masked_sentence
     
     def _toggle_word(self, text_widget, button):
-        text_widget.configure(state="normal")
+        # Find the parent frame
+        frame = text_widget.master
         
-        if not text_widget.word_visible:
-            text_widget.delete("1.0", tk.END)
-            text_widget.insert("1.0", text_widget.original_sentence)
-            button.configure(text=get_translation(self.language, "hide"))
-            text_widget.word_visible = True
-        else:
-            text_widget.delete("1.0", tk.END)
-            text_widget.insert("1.0", text_widget.masked_sentence)
-            button.configure(text=get_translation(self.language, "show"))
-            text_widget.word_visible = False
+        # Get the original sentence from the frame
+        if hasattr(frame, 'original_sentence'):
+            original_sentence = frame.original_sentence
+            text_widget.configure(state="normal")
+            
+            # Check if we're already showing the original (storing visibility in frame)
+            word_visible = getattr(frame, 'word_visible', False)
+            
+            if not word_visible:
+                # Show original sentence
+                text_widget.delete("1.0", tk.END)
+                text_widget.insert("1.0", original_sentence)
+                button.configure(text=get_translation(self.language, "hide"))
+                frame.word_visible = True
+            else:
+                # Show masked sentence
+                masked_sentence = self._create_masked_sentence(frame.original_word, original_sentence)
+                text_widget.delete("1.0", tk.END)
+                text_widget.insert("1.0", masked_sentence)
+                button.configure(text=get_translation(self.language, "show"))
+                frame.word_visible = False
+                
+            text_widget.configure(state="disabled")
     
     def export_docx(self):
         """Export sentences to a Word document."""
@@ -288,7 +356,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
         if include_analysis:
             # Count sentences without analysis
             missing_analyses = [frame for frame in self.sentence_widgets 
-                               if not hasattr(frame.text_widget, 'analysis') or not frame.text_widget.analysis]
+                               if not hasattr(frame, 'analysis') or not frame.analysis]
             
             # If there are missing analyses, generate them
             if missing_analyses:
@@ -309,7 +377,11 @@ class SentenceWidgetManager(ttk.LabelFrame):
                     # Create progress dialog
                     progress_window = tk.Toplevel(self)
                     progress_window.title(get_translation(self.language, "generating_analyses"))
-                    progress_window.geometry("400x100")
+                    width = 400
+                    height = 100
+                    x = (self.winfo_screenwidth() // 2) - (width // 2)
+                    y = (self.winfo_screenheight() // 2) - (height // 2)
+                    progress_window.geometry(f"{width}x{height}+{x}+{y}")
                     progress_window.transient(self)
                     progress_window.grab_set()
                     progress_window.resizable(False, False)
@@ -341,8 +413,8 @@ class SentenceWidgetManager(ttk.LabelFrame):
                         return
                     # Generate analyses one by one
                     for i, frame in enumerate(missing_analyses):
-                        word = frame.text_widget.original_word
-                        sentence = frame.text_widget.original_sentence
+                        word = frame.original_word
+                        sentence = frame.original_sentence
                         
                         # Update progress
                         progress_var.set((i / len(missing_analyses)) * 100)
@@ -355,7 +427,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
                         
                         # Store analysis
                         if analysis:
-                            frame.text_widget.analysis = analysis
+                            frame.analysis = analysis
                         
                         # Update progress again
                         progress_var.set(((i+1) / len(missing_analyses)) * 100)
@@ -389,12 +461,21 @@ class SentenceWidgetManager(ttk.LabelFrame):
         # Add exercises with blanks first
         for i, frame in enumerate(self.sentence_widgets, 1):
             if frame.winfo_exists():
-                text_widget = frame.text_widget
+                # Get the text widget to display the current content
+                text_widget = None
+                for child in frame.winfo_children():
+                    if isinstance(child, tk.Text):
+                        text_widget = child
+                        break
                 
-                # Add exercise with blanks
-                para = doc.add_paragraph()
-                para.add_run(f"{i}. ").bold = True
-                para.add_run(text_widget.masked_sentence)
+                if text_widget:
+                    # Add exercise with blanks (use what's currently displayed)
+                    para = doc.add_paragraph()
+                    para.add_run(f"{i}. ").bold = True
+                    
+                    # Get what's currently in the text widget
+                    current_text = text_widget.get("1.0", "end-1c")
+                    para.add_run(current_text)
         
         # Add page break before answer key
         doc.add_page_break()
@@ -409,33 +490,40 @@ class SentenceWidgetManager(ttk.LabelFrame):
         # Extract and list all blanked words with analysis if available
         for i, frame in enumerate(self.sentence_widgets, 1):
             if frame.winfo_exists():
-                text_widget = frame.text_widget
+                # Get the text widget
+                text_widget = None
+                for child in frame.winfo_children():
+                    if isinstance(child, tk.Text):
+                        text_widget = child
+                        break
                 
-                # Extract the blanked words from the sentence
-                original = text_widget.original_sentence
-                masked = text_widget.masked_sentence
-                
-                # Find all blanks and their answers using improved algorithm
-                words = self._extract_blanked_words_improved(original, masked)
-                
-                if words:
-                    para = doc.add_paragraph()
-                    para.add_run(f"{i}. ").bold = True
+                if text_widget:
+                    # Get the masked text from the text widget
+                    masked = text_widget.get("1.0", "end-1c")
+                    # Get the original sentence from the frame
+                    original = frame.original_sentence
                     
-                    # Add word and analysis if available
-                    if include_analysis and hasattr(text_widget, 'analysis') and text_widget.analysis:
-                        para.add_run(f"{words[0]}; [{text_widget.analysis}]")
-                    else:
-                        para.add_run(", ".join(words))
-                else:
-                    # Fallback to using the original word if no blanks found
-                    if hasattr(text_widget, 'original_word'):
+                    # Find all blanks and their answers using improved algorithm
+                    words = self._extract_blanked_words_improved(original, masked)
+                    
+                    if words:
                         para = doc.add_paragraph()
                         para.add_run(f"{i}. ").bold = True
-                        if include_analysis and hasattr(text_widget, 'analysis') and text_widget.analysis:
-                            para.add_run(f"{text_widget.original_word}; [{text_widget.analysis}]")
+                        
+                        # Add word and analysis if available
+                        if include_analysis and hasattr(frame, 'analysis') and frame.analysis:
+                            para.add_run(f"{words[0]}; [{frame.analysis}]")
                         else:
-                            para.add_run(text_widget.original_word)
+                            para.add_run(", ".join(words))
+                    else:
+                        # Fallback to using the original word if no blanks found
+                        if hasattr(frame, 'original_word'):
+                            para = doc.add_paragraph()
+                            para.add_run(f"{i}. ").bold = True
+                            if include_analysis and hasattr(frame, 'analysis') and frame.analysis:
+                                para.add_run(f"{frame.original_word}; [{frame.analysis}]")
+                            else:
+                                para.add_run(frame.original_word)
         
         # Save the document
         try:
@@ -447,7 +535,7 @@ class SentenceWidgetManager(ttk.LabelFrame):
         except Exception as e:
             messagebox.showerror(
                 get_translation(self.language, "error_title"),
-                get_translation(self.language, "unexpected_error_msg").format(error=str(e))
+                str(e)
             )
 
     def _extract_blanked_words_improved(self, original, masked):
@@ -513,40 +601,58 @@ class SentenceWidgetManager(ttk.LabelFrame):
 
     def show_all_words(self):
         """Show or hide all words in all sentences."""
-        if not self.sentence_widgets:
-            return
+        try:
+            if not self.sentence_widgets:
+                return
+                
+            # Determine the action based on any visible word
+            show_all = not any(hasattr(frame, 'word_visible') and frame.word_visible 
+                              for frame in self.sentence_widgets)
             
-        # Determine the action based on any visible word
-        show_all = not any(hasattr(widget.text_widget, 'word_visible') and 
-                          widget.text_widget.word_visible 
-                          for widget in self.sentence_widgets)
-        
-        # Update button text
-        self.show_all_btn.configure(
-            text=get_translation(self.language, "hide_all" if show_all else "show_all")
-        )
-        
-        for widget in self.sentence_widgets:
-            if widget.winfo_exists():
-                text_widget = widget.text_widget
-                text_widget.configure(state="normal")
-                
-                if show_all:
-                    text_widget.delete("1.0", tk.END)
-                    text_widget.insert("1.0", text_widget.original_sentence)
-                    text_widget.show_button.configure(
-                        text=get_translation(self.language, "hide")
-                    )
-                    text_widget.word_visible = True
-                else:
-                    text_widget.delete("1.0", tk.END)
-                    text_widget.insert("1.0", text_widget.masked_sentence)
-                    text_widget.show_button.configure(
-                        text=get_translation(self.language, "show")
-                    )
-                    text_widget.word_visible = False
-                
-                text_widget.configure(state="disabled")
+            # Update button text
+            self.show_all_btn.configure(
+                text=get_translation(self.language, "hide_all" if show_all else "show_all")
+            )
+            
+            for frame in self.sentence_widgets:
+                if frame.winfo_exists():
+                    # Find the text widget and show button
+                    text_widget = None
+                    show_button = None
+                    
+                    for child in frame.winfo_children():
+                        if isinstance(child, tk.Text):
+                            text_widget = child
+                        elif isinstance(child, ttk.Frame):  # Buttons frame
+                            for button in child.winfo_children():
+                                if "show_button" in str(button):
+                                    show_button = button
+                                    break
+                    
+                    if text_widget and show_button:
+                        text_widget.configure(state="normal")
+                        
+                        if show_all:
+                            # Show original sentence
+                            text_widget.delete("1.0", tk.END)
+                            text_widget.insert("1.0", frame.original_sentence)
+                            show_button.configure(
+                                text=get_translation(self.language, "hide")
+                            )
+                            frame.word_visible = True
+                        else:
+                            # Show masked sentence
+                            masked_sentence = self._create_masked_sentence(frame.original_word, frame.original_sentence)
+                            text_widget.delete("1.0", tk.END)
+                            text_widget.insert("1.0", masked_sentence)
+                            show_button.configure(
+                                text=get_translation(self.language, "show")
+                            )
+                            frame.word_visible = False
+                        
+                        text_widget.configure(state="disabled")
+        except Exception as e:
+            pass
 
     def clear_sentences(self):
         """Delete all sentences."""
@@ -580,13 +686,16 @@ class SentenceWidgetManager(ttk.LabelFrame):
 
     def _copy_sentence(self, text_widget):
         """Copy sentence to clipboard."""
-        # Check if the word is visible and copy accordingly
-        if hasattr(text_widget, 'word_visible') and text_widget.word_visible:
+        # Find the parent frame
+        frame = text_widget.master
+        
+        # Get the appropriate sentence based on visibility
+        if hasattr(frame, 'word_visible') and frame.word_visible:
             # Copy the original sentence with filled blanks
-            sentence = text_widget.original_sentence
+            sentence = frame.original_sentence
         else:
-            # Copy the masked sentence with blanks
-            sentence = text_widget.masked_sentence
+            # Copy the masked sentence with blanks (what's currently displayed)
+            sentence = text_widget.get("1.0", "end-1c")
         
         # Strip any trailing newlines or spaces
         sentence = sentence.strip()
@@ -595,27 +704,40 @@ class SentenceWidgetManager(ttk.LabelFrame):
         self.clipboard_clear()
         self.clipboard_append(sentence)
         
-        # Show brief visual feedback using the parent widget's status
-        for child in text_widget.master.winfo_children():
-            if isinstance(child, ttk.Button) and child.cget("text") == get_translation(self.language, "copy"):
-                original_text = child.cget("text")
-                child.configure(text=get_translation(self.language, "checkmark"))
-                
-                # Reset the button text after a short delay
-                def reset_text():
-                    if child.winfo_exists():
-                        child.configure(text=original_text)
-                
-                # Schedule reset after 1 second
-                self.after(1000, reset_text)
-                break
+        # Show brief visual feedback on the copy button
+        for child in frame.winfo_children():
+            if isinstance(child, ttk.Frame):  # Buttons frame
+                for button in child.winfo_children():
+                    if "copy_button" in str(button):
+                        original_text = button.cget("text")
+                        button.configure(text=get_translation(self.language, "checkmark"))
+                        
+                        # Reset the button text after a short delay
+                        def reset_text():
+                            if button.winfo_exists():
+                                button.configure(text=original_text)
+                        
+                        # Schedule reset after 1 second
+                        self.after(1000, reset_text)
+                        break
 
     def _update_buttons_state(self):
-        """Update the state of control buttons."""
-        state = "normal" if self.sentence_widgets else "disabled"
-        self.show_all_btn.configure(state=state)
-        self.export_btn.configure(state=state)
-        self.delete_btn.configure(state=state)
+        has_sentences = len(self.sentence_widgets) > 0
+        
+        # Menu button should always be enabled to allow loading history
+        if hasattr(self, 'menu_btn'):
+            self.menu_btn.configure(state="normal")
+        
+        # Show all and delete buttons are only enabled when there are sentences
+        sentence_dependent_state = "normal" if has_sentences else "disabled"
+        if hasattr(self, 'show_all_btn'):
+            self.show_all_btn.configure(state=sentence_dependent_state)
+            
+        if hasattr(self, 'delete_btn'):
+            self.delete_btn.configure(state=sentence_dependent_state)
+        
+        if self.on_sentences_changed:
+            self.on_sentences_changed(has_sentences)
 
     def _delete_sentence(self, frame):
         """Delete a single sentence widget."""
@@ -653,51 +775,105 @@ class SentenceWidgetManager(ttk.LabelFrame):
             self.canvas.update()
 
     def _regenerate_sentence(self, word, frame):
-        """Regenerate sentence for a word."""
-        if not self.api_service.server_connected:
-            messagebox.showwarning(
-                get_translation(self.language, "server_error_title"),
-                get_translation(self.language, "server_connection_guide")
-            )
-            return
+        """Regenerate the sentence for a specific word."""
+        # Get prompt from settings
+        prompt = self.main_window.settings_service.get_settings("generation_prompt")
+        if not prompt:
+            prompt = DEFAULT_CONFIG["generation_prompt"]
         
-        # Generate new sentence
-        prompt = self.api_service.settings_service.get_settings("generation_prompt")
-
-        if r'{word}' not in prompt:
-            messagebox.showerror(
-                get_translation(self.language, "error_title"),
-                get_translation(self.language, "invalid_prompt_format")
-            )
-            return
-
-        new_sentence = self.api_service.generate_sentence(word, prompt)
+        # Disable the regenerate button and change it to progress indicator
+        regen_btn = None
+        for child in frame.winfo_children():
+            if isinstance(child, ttk.Frame):  # This is the buttons frame
+                for button in child.winfo_children():
+                    if "regen_button" in str(button):
+                        regen_btn = button
+                        break
         
-        if new_sentence:
-            # Create masked sentence
-            masked_sentence = self._create_masked_sentence(word, new_sentence)
+        if regen_btn:
+            original_text = regen_btn.cget("text")
+            regen_btn.config(text="...", state="disabled")
+        
+        # Check if we have a context attachment
+        if hasattr(self.main_window, 'context') and self.main_window.context:
+            context_attachment_prompt = self.main_window.settings_service.get_settings("context_attachment_prompt")
+            prompt = context_attachment_prompt.format(context=self.main_window.context) + "\n" + prompt
+
+        # Generate a new sentence with retry logic
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            # Get the new sentence
+            sentence = self.api_service.generate_sentence(word, prompt)
             
-            # Update text widget
-            text_widget = frame.text_widget
-            text_widget.configure(state="normal")
-            text_widget.delete("1.0", tk.END)
+            if sentence:
+                # Store the new original sentence in the frame
+                frame.original_sentence = sentence
+                
+                # Create masked sentence
+                masked_sentence = self._create_masked_sentence(word, sentence)
+                
+                # Find the text widget in this frame
+                text_widget = None
+                for child in frame.winfo_children():
+                    if isinstance(child, tk.Text):
+                        text_widget = child
+                        break
+                
+                # Get the show button
+                show_btn = None
+                for child in frame.winfo_children():
+                    if isinstance(child, ttk.Frame):  # This is the buttons frame
+                        for button in child.winfo_children():
+                            if "show_button" in str(button):
+                                show_btn = button
+                                break
+                
+                if text_widget:
+                    # Update the text widget
+                    text_widget.config(state="normal")
+                    text_widget.delete("1.0", "end")
+                    text_widget.insert("1.0", masked_sentence)
+                    text_widget.config(state="disabled")
+                    
+                    # Reset the button
+                    if regen_btn:
+                        regen_btn.config(text=original_text, state="normal")
+                    
+                    # Reset the show button text
+                    if show_btn:
+                        show_btn.config(text=get_translation(self.language, "show"))
+                    
+                    # Clear any existing analysis since it's no longer valid
+                    if hasattr(frame, 'analysis'):
+                        delattr(frame, 'analysis')
+                    
+                    # Adjust height
+                    text_widget.after(10, lambda tw=text_widget: self._adjust_text_height(tw))
+                    
+                    return True
             
-            # Set the appropriate sentence based on visibility state
-            if text_widget.word_visible:
-                text_widget.insert("1.0", new_sentence)
-            else:
-                text_widget.insert("1.0", masked_sentence)
-            
-            # Update stored sentences
-            text_widget.original_sentence = new_sentence
-            text_widget.masked_sentence = masked_sentence
-            
-            # Readjust height
-            text_widget.see("end")
-            num_lines = text_widget.count("1.0", "end", "displaylines")[0]
-            text_widget.configure(height=max(2, num_lines))
-            
-            text_widget.configure(state="disabled")
+            # If we've reached the maximum attempts, reset the button
+            if attempt == max_attempts - 1:
+                if regen_btn:
+                    regen_btn.config(text=original_text, state="normal")
+                messagebox.showerror(
+                    get_translation(self.language, "error_title"),
+                    get_translation(self.language, "sentence_generation_failed")
+                )
+                return False
+                
+        # If we're here, generation failed
+        if regen_btn:
+            regen_btn.config(text=original_text, state="normal")
+        return False
+    
+    def _adjust_text_height(self, text_widget):
+        """Adjust the height of a text widget based on its content."""
+        text_widget.configure(state="normal")
+        text_widget.see("end")
+        num_lines = text_widget.count("1.0", "end", "displaylines")[0]
+        text_widget.configure(height=max(2, num_lines))
+        text_widget.configure(state="disabled")
 
     def update_texts(self, language):
         """Update all texts in the widget after language change."""
@@ -707,7 +883,8 @@ class SentenceWidgetManager(ttk.LabelFrame):
         self.configure(text=get_translation(language, "generated_sentences"))
         
         # Update control buttons
-        self.export_btn.configure(text=get_translation(language, "export_docx"))
+        if hasattr(self, 'menu_btn'):
+            self.menu_btn.configure(text=get_translation(language, "menu_button_main"))
         
         # Update show/hide all button based on its current state
         if hasattr(self, 'show_all_btn'):
@@ -718,46 +895,261 @@ class SentenceWidgetManager(ttk.LabelFrame):
                 self.show_all_btn.configure(text=get_translation(language, "show_all"))
         
         # Update delete button
-        self.delete_btn.configure(text=get_translation(language, "delete_all"))
+        if hasattr(self, 'delete_btn'):
+            self.delete_btn.configure(text=get_translation(language, "delete_all"))
         
         # Update individual sentence widgets
         for frame in self.sentence_widgets:
             if not frame.winfo_exists():
                 continue
             
-            # Update show/hide button based on current visibility state
-            if hasattr(frame.text_widget, 'show_button'):
-                if frame.text_widget.word_visible:
-                    frame.text_widget.show_button.configure(text=get_translation(language, "hide"))
-                else:
-                    frame.text_widget.show_button.configure(text=get_translation(language, "show"))
+            # Find the text widget and buttons
+            text_widget = None
+            show_button = None
+            copy_button = None
+            regen_button = None
+            menu_button = None
             
-            # Find the buttons frame - typically the frame grid positioned at column 2
-            buttons_frame = None
             for child in frame.winfo_children():
-                if isinstance(child, ttk.Frame) and child.grid_info().get('column') == 2:
-                    buttons_frame = child
-                    break
-                
-            if not buttons_frame:
-                continue
+                if isinstance(child, tk.Text):
+                    text_widget = child
+                elif isinstance(child, ttk.Frame):  # Buttons frame
+                    for button in child.winfo_children():
+                        if "show_button" in str(button):
+                            show_button = button
+                        elif "copy_button" in str(button):
+                            copy_button = button
+                        elif "regen_button" in str(button):
+                            regen_button = button
+                        elif "menu_button" in str(button):
+                            menu_button = button
             
-            # Update all buttons in the frame
-            for button in buttons_frame.winfo_children():
-                if not isinstance(button, ttk.Button):
-                    continue
+            # Update show/hide button based on current visibility state
+            if show_button:
+                if hasattr(frame, 'word_visible') and frame.word_visible:
+                    show_button.configure(text=get_translation(language, "hide"))
+                else:
+                    show_button.configure(text=get_translation(language, "show"))
+            
+            # Update other buttons
+            if copy_button:
+                copy_button.configure(text=get_translation(language, "copy"))
+            if regen_button:
+                regen_button.configure(text=get_translation(language, "regenerate_button"))
+            if menu_button:
+                menu_button.configure(text=get_translation(language, "menu_button"))
+
+    def _show_main_menu(self):
+        """Show the main menu for the sentence frame."""
+        # Create menu
+        menu = tk.Menu(self, tearoff=0)
+        
+        # Add Export to Word option (disabled if no sentences)
+        has_sentences = len(self.sentence_widgets) > 0
+        menu.add_command(
+            label=get_translation(self.language, "export_docx"),
+            command=self.export_docx,
+            state="normal" if has_sentences else "disabled"
+        )
+        
+        # Add Save History option (disabled if no sentences)
+        menu.add_command(
+            label=f"{get_translation(self.language, 'save_history')}",
+            command=self.save_history,
+            state="normal" if has_sentences else "disabled"
+        )
+        
+        # Add Load History option (always enabled)
+        menu.add_command(
+            label=f"{get_translation(self.language, 'load_history')}",
+            command=self.load_history
+        )
+        
+        # Get button position
+        btn = self.menu_btn
+        x = btn.winfo_rootx()
+        y = btn.winfo_rooty() + btn.winfo_height()
+        
+        # Show menu and bind to close on click outside
+        menu.post(x, y)
+        menu.bind("<Unmap>", lambda e: menu.destroy())
+        
+        # Bind to close on any click
+        def close_menu(e):
+            menu.destroy()
+            self.unbind("<Button-1>")
+        
+        self.bind("<Button-1>", close_menu)
+    
+    def save_history(self):
+        """Save the history of sentences to a YAML file."""
+        if not self.sentence_widgets:
+            messagebox.showwarning(
+                get_translation(self.language, "warning_title"),
+                get_translation(self.language, "no_sentences_to_save")
+            )
+            return
+        
+        # Create default filename with timestamp
+        current_time = datetime.now().strftime("%y%m%d_%H%M%S")
+        default_filename = f"lexigen_{current_time}.yaml"
+        
+        # Ask user where to save the file
+        file_path = filedialog.asksaveasfilename(
+            title=get_translation(self.language, "save_history_title"),
+            defaultextension=".yaml",
+            filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")],
+            initialfile=default_filename
+        )
+        
+        if not file_path:
+            return  # User cancelled
+        
+        # Prepare data structure to save
+        history_data = {
+            "sentences": [],
+            "context": None
+        }
+        
+        # Add context if available
+        if hasattr(self.main_window, "context") and self.main_window.context:
+            history_data["context"] = self.main_window.context
+        
+        # Collect all sentence data
+        for frame in self.sentence_widgets:
+            # Get original word
+            original_word = frame.original_word
+            
+            # Get sentence
+            text_widget = None
+            for child in frame.winfo_children():
+                if isinstance(child, tk.Text):
+                    text_widget = child
+                    break
+            
+            if text_widget:
+                # Get the visible (masked) sentence
+                masked_sentence = text_widget.get("1.0", "end-1c")
                 
-                # Use button names to identify them
-                button_name = str(button).split(".")[-1]
+                # Get original sentence (if available, otherwise use masked)
+                original_sentence = getattr(frame, "original_sentence", masked_sentence)
                 
-                if "copy_button" in button_name:
-                    button.configure(text=get_translation(language, "copy"))
+                # Get analysis if available
+                analysis = getattr(frame, "analysis", None)
+                
+                # Add to history
+                sentence_data = {
+                    "word": original_word,
+                    "sentence": original_sentence,
+                    "masked_sentence": masked_sentence,
+                    "analysis": analysis
+                }
+                
+                history_data["sentences"].append(sentence_data)
+        
+        try:
+            # Save to YAML
+            with open(file_path, 'w', encoding='utf-8') as f:
+                yaml.safe_dump(history_data, f, allow_unicode=True, default_flow_style=False)
+            
+            messagebox.showinfo(
+                get_translation(self.language, "export_success_title"),
+                get_translation(self.language, "history_save_success")
+            )
+        except Exception as e:
+            messagebox.showerror(
+                get_translation(self.language, "error_title"),
+                str(e)
+            )
+    
+    def load_history(self):
+        """Load sentence history from a YAML file."""
+        # Ask user for file to load
+        file_path = filedialog.askopenfilename(
+            title=get_translation(self.language, "load_history_title"),
+            filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")]
+        )
+        
+        if not file_path:
+            return  # User cancelled
+        
+        try:
+            # Load from YAML
+            with open(file_path, 'r', encoding='utf-8') as f:
+                history_data = yaml.safe_load(f) or {}
+            
+            if not history_data or "sentences" not in history_data:
+                raise ValueError("Invalid history file format")
+            
+            # Clear existing sentences
+            self.clear_sentences()
+            
+            # Load context if available
+            if "context" in history_data and history_data["context"] and hasattr(self.main_window, "context"):
+                self.main_window.context = history_data["context"]
+            
+            # Load all sentences
+            for sentence_data in history_data["sentences"]:
+                word = sentence_data.get("word", "")
+                sentence = sentence_data.get("sentence", "")
+                
+                if word and sentence:
+                    # Add the sentence to UI
+                    self.add_sentence(word, sentence)
                     
-                elif "regen_button" in button_name:
-                    button.configure(text=get_translation(language, "regenerate_button"))
+                    # If this is the last sentence widget
+                    if self.sentence_widgets:
+                        frame = self.sentence_widgets[-1]
+                        
+                        # Store original sentence
+                        frame.original_sentence = sentence
+                        
+                        # Store analysis if available
+                        if "analysis" in sentence_data and sentence_data["analysis"]:
+                            frame.analysis = sentence_data["analysis"]
+            
+            # Update button states
+            self._update_buttons_state()
+            
+            # Schedule layout refresh after current event processing completes
+            def delayed_layout_refresh():
+                # Configure sentence frames to stretch properly
+                for frame in self.sentence_widgets:
+                    # Ensure each frame is configured to stretch horizontally
+                    frame.grid(sticky=(tk.W, tk.E))
+                    frame.columnconfigure(1, weight=1)  # Text column stretches
                     
-                elif "menu_button" in button_name:
-                    button.configure(text=get_translation(language, "menu_button"))
+                    # Update text widgets explicitly
+                    for child in frame.winfo_children():
+                        if isinstance(child, tk.Text):
+                            child.grid(sticky=(tk.W, tk.E))
+                
+                # Force update of the canvas and container
+                self.sentences_container.update_idletasks()
+                self._on_frame_configure()
+                self.canvas.update_idletasks()
+                
+                # Get the current width of the widget and force the canvas to match
+                current_width = self.winfo_width() - 40  # Accounting for scrollbar, padding, and 10px space for menu button
+                self.canvas.itemconfig(self.canvas_frame, width=current_width)
+                
+                # Force another layout pass
+                self.update_idletasks()
+            
+            # Run layout refresh after a short delay
+            self.after(100, delayed_layout_refresh)
+            
+            # Show success message after layout is refreshed
+            self.after(200, lambda: messagebox.showinfo(
+                get_translation(self.language, "export_success_title"),
+                get_translation(self.language, "history_load_success")
+            ))
+            
+        except Exception as e:
+            messagebox.showerror(
+                get_translation(self.language, "error_title"),
+                get_translation(self.language, "history_load_error").format(error=str(e))
+            )
 
     def _show_menu(self, frame):
         """Show the menu for a sentence frame."""
@@ -947,22 +1339,34 @@ class SentenceWidgetManager(ttk.LabelFrame):
 
     def _show_analysis(self, frame):
         """Show analysis window for the sentence."""
-        text_widget = frame.text_widget
-        word = text_widget.original_word
-        sentence = text_widget.original_sentence
+        # Extract the original word and sentence from the frame
+        word = frame.original_word
+        sentence = frame.original_sentence
         
+        # Find the text widget
+        text_widget = None
+        for child in frame.winfo_children():
+            if isinstance(child, tk.Text):
+                text_widget = child
+                break
+                
+        if not text_widget:
+            return
+            
         # Create and show analysis window
-        AnalysisWindow(self, word, sentence, self.api_service, self.language, text_widget)
+        analysis_window = AnalysisWindow(self, word, sentence, self.api_service, self.language, text_widget)
+        
+        # Set the frame reference for storing analysis
+        analysis_window.sentence_frame = frame
 
     def _edit_sentence(self, frame):
         """Edit a sentence."""
-        text_widget = frame.text_widget
-        word = text_widget.original_word
-        sentence = text_widget.original_sentence
+        word = frame.original_word
+        sentence = frame.original_sentence
         
         # Create and show edit window
         EditSentenceWindow(self, word, sentence, self.api_service, self.language, frame)
-
+    
     def _generate_with_tense(self, frame, tense):
         """Generate a sentence with a specified tense."""
         if not self.api_service.server_connected:
@@ -972,7 +1376,8 @@ class SentenceWidgetManager(ttk.LabelFrame):
             )
             return
         
-        word = frame.text_widget.original_word
+        word = frame.original_word
+        frame.tense = tense
         
         # Get tense prompt template from settings
         prompt_template = self.api_service.settings_service.get_settings("tense_prompt")
@@ -989,192 +1394,237 @@ class SentenceWidgetManager(ttk.LabelFrame):
         new_sentence = self.api_service.generate_sentence(word, prompt)
         
         if new_sentence:
+            # Update original sentence in frame
+            frame.original_sentence = new_sentence
+            
             # Create masked sentence
             masked_sentence = self._create_masked_sentence(word, new_sentence)
             
-            # Update text widget
-            text_widget = frame.text_widget
-            text_widget.configure(state="normal")
-            text_widget.delete("1.0", tk.END)
-            
-            # Set the appropriate sentence based on visibility state
-            if hasattr(text_widget, 'word_visible') and text_widget.word_visible:
-                text_widget.insert("1.0", new_sentence)
-            else:
+            # Find the text widget
+            text_widget = None
+            for child in frame.winfo_children():
+                if isinstance(child, tk.Text):
+                    text_widget = child
+                    break
+                    
+            if text_widget:
+                # Update the text widget
+                text_widget.configure(state="normal")
+                text_widget.delete("1.0", tk.END)
                 text_widget.insert("1.0", masked_sentence)
-            
-            # Update stored sentences
-            text_widget.original_sentence = new_sentence
-            text_widget.masked_sentence = masked_sentence
-            
-            # Remove analysis if it exists as the sentence has changed
-            if hasattr(text_widget, 'analysis'):
-                delattr(text_widget, 'analysis')
-            
-            # Readjust height
-            text_widget.see("end")
-            num_lines = text_widget.count("1.0", "end", "displaylines")[0]
-            text_widget.configure(height=max(2, num_lines))
-            
-            text_widget.configure(state="disabled")
+                text_widget.configure(state="disabled")
+                
+                # Remove analysis if it exists as the sentence has changed
+                if hasattr(frame, 'analysis'):
+                    delattr(frame, 'analysis')
+                
+                # Adjust height
+                self._adjust_text_height(text_widget)
 
 class AnalysisWindow(tk.Toplevel):
     def __init__(self, parent, word, sentence, api_service, language, text_widget):
-        if r'{word}' not in api_service.settings_service.get_settings("analysis_prompt") or r'{sentence}' not in api_service.settings_service.get_settings("analysis_prompt"):
-            messagebox.showerror(
-                get_translation(language, "error_title"),
-                get_translation(language, "invalid_prompt_format")
-            )
-            return
-
         super().__init__(parent)
-        self.title(get_translation(language, "word_analysis"))
-        self.geometry("600x400")
-        self.resizable(True, True)
-        
-        # Make window modal
+        self.parent = parent
+        self.word = word
+        self.sentence = sentence
+        self.api_service = api_service
+        self.language = language
+        self.text_widget = text_widget
+        self.sentence_frame = None  # Will be set by caller
+        self.title(get_translation(self.language, "word_analysis"))
+        self.analysis_result = None  # Initialize to None
+
+        # Set geometry and make modal
+        width = 600
+        height = 300
+        x = (self.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.winfo_screenheight() // 2) - (height // 2)
+        self.geometry(f"{width}x{height}+{x}+{y}")
         self.transient(parent)
         self.grab_set()
         
-        # Store references
-        self.api_service = api_service
-        self.language = language
-        self.word = word
-        self.sentence = sentence
-        self.text_widget = text_widget
-        self.analysis = None
-        self.editing = False
+        # Setup UI
+        self.setup_ui()
         
-        # Bind to window close event
-        self.protocol("WM_DELETE_WINDOW", self._on_close)
-        
-        # Create main frame
+    def setup_ui(self):
+        # Main container
         main_frame = ttk.Frame(self, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
         
         # Word and sentence display
-        word_frame = ttk.Frame(main_frame)
-        word_frame.pack(fill=tk.X, pady=(0, 10))
+        info_frame = ttk.Frame(main_frame)
+        info_frame.pack(fill=tk.X, pady=(0, 10))
         
-        ttk.Label(word_frame, text=f"{get_translation(language, 'word')}: {word}").pack(side=tk.LEFT)
-        ttk.Label(word_frame, text=f"{get_translation(language, 'sentence')}: {sentence}").pack(side=tk.LEFT, padx=(20, 0))
+        ttk.Label(info_frame, text=f"{get_translation(self.language, 'word')}: ").pack(side=tk.LEFT)
+        ttk.Label(info_frame, text=self.word, font=("", 10, "bold")).pack(side=tk.LEFT)
         
-        # Analysis text widget
-        self.analysis_text = tk.Text(main_frame, wrap=tk.WORD, height=15, state="disabled")
-        self.analysis_text.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        sentence_frame = ttk.Frame(main_frame)
+        sentence_frame.pack(fill=tk.X, pady=(0, 10))
         
-        # Buttons frame
+        ttk.Label(sentence_frame, text=f"{get_translation(self.language, 'sentence')}: ").pack(anchor=tk.W)
+        sentence_text = tk.Text(sentence_frame, wrap=tk.WORD, height=3)
+        sentence_text.insert("1.0", self.sentence)
+        sentence_text.configure(state="disabled")
+        sentence_text.pack(fill=tk.X)
+        
+        # Analysis section
+        analysis_frame = ttk.Frame(main_frame)
+        analysis_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        
+        ttk.Label(analysis_frame, text=f"{get_translation(self.language, 'analysis')}: ").pack(anchor=tk.W)
+        self.analysis_text = scrolledtext.ScrolledText(analysis_frame, wrap=tk.WORD, height=5)
+        self.analysis_text.pack(fill=tk.BOTH, expand=True)
+        
+        # Buttons
         buttons_frame = ttk.Frame(main_frame)
         buttons_frame.pack(fill=tk.X)
         
-        self.regenerate_btn = ttk.Button(
-            buttons_frame,
-            text=get_translation(language, "regenerate_analysis"),
-            command=self._regenerate_analysis
-        )
-        self.regenerate_btn.pack(side=tk.LEFT)
+        ttk.Button(buttons_frame, text=get_translation(self.language, "regenerate_analysis"), 
+                  command=self._regenerate_analysis).pack(side=tk.LEFT, padx=(0, 5))
         
-        self.edit_btn = ttk.Button(
-            buttons_frame,
-            text=get_translation(language, "edit_analysis"),
-            command=self._toggle_edit_mode
-        )
-        self.edit_btn.pack(side=tk.LEFT, padx=(5, 0))
+        # Add an Edit/Save toggle button
+        self.edit_btn = ttk.Button(buttons_frame, text=get_translation(self.language, "edit"), 
+                                  command=self._toggle_edit_mode)
+        self.edit_btn.pack(side=tk.LEFT, padx=(0, 5))
         
-        close_btn = ttk.Button(
-            buttons_frame,
-            text=get_translation(language, "close"),
-            command=self._on_close
-        )
-        close_btn.pack(side=tk.RIGHT)
+        ttk.Button(buttons_frame, text=get_translation(self.language, "close"), 
+                  command=self._on_close).pack(side=tk.RIGHT)
         
-        # Check for existing analysis
-        if hasattr(text_widget, 'analysis') and text_widget.analysis:
-            self.analysis = text_widget.analysis
-            self._display_analysis()
+        # After UI setup, check for existing analysis or start new one
+        self.after(100, self._check_existing_analysis)
+    
+    def _check_existing_analysis(self):
+        """Check for existing analysis and load it if it exists."""
+        if self.sentence_frame is not None and hasattr(self.sentence_frame, 'analysis') and self.sentence_frame.analysis:
+            self.load_existing_analysis(self.sentence_frame.analysis)
         else:
             self._generate_analysis()
-    
+        
+    def load_existing_analysis(self, analysis):
+        """Load an existing analysis"""
+        self.analysis_result = analysis
+        self._display_analysis()
+
     def _toggle_edit_mode(self):
-        """Toggle between view and edit modes for the analysis text."""
-        if not self.editing:
-            # Switch to edit mode
-            self.analysis_text.configure(state="normal")
-            self.edit_btn.configure(text=get_translation(self.language, "save_analysis"))
-            self.editing = True
-        else:
-            # Switch back to view mode and save changes
-            self.analysis = self.analysis_text.get("1.0", "end-1c").strip()
-            self.analysis_text.configure(state="disabled")
-            self.edit_btn.configure(text=get_translation(self.language, "edit_analysis"))
-            self.editing = False
-    
-    def _display_analysis(self):
-        """Display the analysis in the text widget with markdown formatting."""
-        if not self.analysis:
-            return
+        """Toggle between edit and read mode for analysis"""
+        if self.analysis_text.cget("state") == "normal":
+            # Save the analysis when switching from edit mode
+            self.analysis_result = self.analysis_text.get("1.0", tk.END).strip()
             
-        # Display the text directly
+            # Store the analysis in the sentence frame
+            if self.sentence_frame is not None:
+                self.sentence_frame.analysis = self.analysis_result
+                
+            self.analysis_text.configure(state="disabled")
+            self.edit_btn.configure(text=get_translation(self.language, "edit"))
+        else:
+            # Enable editing
+            self.analysis_text.configure(state="normal")
+            self.edit_btn.configure(text=get_translation(self.language, "save"))
+
+    def _display_analysis(self):
+        """Display the analysis results."""
+        if hasattr(self, 'analysis_result') and self.analysis_result:
+            self.analysis_text.configure(state="normal")
+            self.analysis_text.delete("1.0", tk.END)
+            self.analysis_text.insert("1.0", self.analysis_result)
+            self.analysis_text.configure(state="disabled")
+
+    def _generate_analysis(self):
+        """Generate analysis for the given word and sentence."""
+        # Check if we already have an analysis stored in the frame
+        if self.sentence_frame is not None and hasattr(self.sentence_frame, 'analysis') and self.sentence_frame.analysis:
+            self.analysis_result = self.sentence_frame.analysis
+            self._display_analysis()
+            return
+        
+        if not self.api_service.server_connected:
+            self.analysis_text.configure(state="normal")
+            self.analysis_text.delete("1.0", tk.END)
+            self.analysis_text.insert("1.0", get_translation(self.language, "server_not_connected"))
+            self.analysis_text.configure(state="disabled")
+            return
+
         self.analysis_text.configure(state="normal")
         self.analysis_text.delete("1.0", tk.END)
-        self.analysis_text.insert("1.0", self.analysis)
+        self.analysis_text.insert("1.0", get_translation(self.language, "analyzing"))
         self.analysis_text.configure(state="disabled")
-    
-    def _generate_analysis(self):
-        """Generate analysis for the word in the sentence."""
-        if not self.api_service.server_connected:
-            messagebox.showwarning(
-                get_translation(self.language, "server_error_title"),
-                get_translation(self.language, "server_connection_guide")
-            )
-            return
-        
-        # Get analysis prompt from settings
-        prompt_template = self.api_service.settings_service.get_settings("analysis_prompt") if hasattr(self.api_service, 'settings_service') and self.api_service.settings_service else None
+        self.update()
 
-        prompt = prompt_template.format(word=self.word, sentence=self.sentence)
+        # Get analysis prompt
+        analysis_prompt = self.api_service.settings_service.get_settings("analysis_prompt")
         
-        self.analysis = self.api_service.generate_sentence(self.word, prompt)
+        # Format the prompt with the word and sentence
+        prompt = analysis_prompt.format(word=self.word, sentence=self.sentence)
         
-        if self.analysis:
-            self._display_analysis()
-        else:
-            messagebox.showerror(
-                get_translation(self.language, "error_title"),
-                get_translation(self.language, "analysis_generation_failed")
-            )
-            return
-    
+        # Use the generation method but with analysis prompt
+        self.analysis_result = self._get_analysis(prompt)
+        
+        # Store the analysis in the sentence frame
+        if self.sentence_frame is not None and self.analysis_result:
+            self.sentence_frame.analysis = self.analysis_result
+        
+        # Display the result
+        self._display_analysis()
+        
     def _regenerate_analysis(self):
-        """Regenerate the analysis."""
-        self.regenerate_btn.configure(state="disabled")
-        self.edit_btn.configure(state="disabled")
+        """Force regeneration of analysis."""
+        # Clear existing analysis if any
+        if self.sentence_frame is not None and hasattr(self.sentence_frame, 'analysis'):
+            delattr(self.sentence_frame, 'analysis')
         
-        # Reset to view mode if currently editing
-        if self.editing:
-            self.editing = False
-            self.edit_btn.configure(text=get_translation(self.language, "edit_analysis"))
-        
+        # Generate new analysis
         self._generate_analysis()
-        
-        self.regenerate_btn.configure(state="normal")
-        self.edit_btn.configure(state="normal")
-    
+
     def _on_close(self):
-        """Store analysis in text widget and close window."""
-        # If in edit mode, save the current text
-        if self.editing:
-            self.analysis = self.analysis_text.get("1.0", "end-1c").strip()
+        """Handle window close event."""
+        if self.analysis_text.cget("state") == "normal":
+            # If in edit mode, save the analysis before closing
+            self.analysis_result = self.analysis_text.get("1.0", tk.END).strip()
+            
+            # Store the analysis in the sentence frame
+            if self.sentence_frame is not None:
+                self.sentence_frame.analysis = self.analysis_result
         
-        if self.analysis:
-            self.text_widget.analysis = self.analysis
         self.destroy()
+
+    def _get_analysis(self, prompt):
+        """Get analysis from either local model or API."""
+        try:
+            if self.api_service.using_local_model and self.api_service.local_model is not None:
+                # Use local model for analysis
+                output = self.api_service.local_model(
+                    prompt,
+                    max_tokens=256,
+                    stop=["</s>", "\n\n"],
+                    echo=False
+                )
+                return output['choices'][0]['text'].strip()
+            else:
+                # Use remote API
+                response = requests.post(
+                    self.api_service.api_url,
+                    json={
+                        "model": self.api_service.model,
+                        "prompt": prompt,
+                        "stream": False
+                    }
+                )
+                response.raise_for_status()
+                result = response.json()
+                return result["response"].strip()
+        except Exception as e:
+            return f"{get_translation(self.language, 'analysis_error')}: {str(e)}"
 
 class EditSentenceWindow(tk.Toplevel):
     def __init__(self, parent, word, sentence, api_service, language, frame):
         super().__init__(parent)
         self.title(get_translation(language, "edit_sentence"))
-        self.geometry("600x250")
+        width = 600
+        height = 220
+        x = (self.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.winfo_screenheight() // 2) - (height // 2)
+        self.geometry(f"{width}x{height}+{x}+{y}")
         self.resizable(True, True)
         
         # Make window modal
@@ -1244,32 +1694,31 @@ class EditSentenceWindow(tk.Toplevel):
             self.destroy()
             return
         
-        # Update the sentence in the frame
-        text_widget = self.frame.text_widget
+        # Update the original sentence in the frame
+        self.frame.original_sentence = new_sentence
         
-        # Update original sentence
-        text_widget.original_sentence = new_sentence
-        
-        # Create new masked sentence
-        text_widget.masked_sentence = self.parent._create_masked_sentence(self.word, new_sentence)
-        
-        # Update the display based on current visibility
-        text_widget.configure(state="normal")
-        text_widget.delete("1.0", tk.END)
-        
-        if hasattr(text_widget, 'word_visible') and text_widget.word_visible:
-            text_widget.insert("1.0", new_sentence)
-        else:
-            text_widget.insert("1.0", text_widget.masked_sentence)
-        
-        # Remove analysis if it exists as the sentence has changed
-        if hasattr(text_widget, 'analysis'):
-            delattr(text_widget, 'analysis')
-        
-        # Adjust height
-        text_widget.see("end")
-        num_lines = text_widget.count("1.0", "end", "displaylines")[0]
-        text_widget.configure(height=max(2, num_lines))
-        text_widget.configure(state="disabled")
+        # Find the text widget
+        text_widget = None
+        for child in self.frame.winfo_children():
+            if isinstance(child, tk.Text):
+                text_widget = child
+                break
+                
+        if text_widget:
+            # Create new masked sentence
+            masked_sentence = self.parent._create_masked_sentence(self.word, new_sentence)
+            
+            # Update the display
+            text_widget.configure(state="normal")
+            text_widget.delete("1.0", tk.END)
+            text_widget.insert("1.0", masked_sentence)
+            text_widget.configure(state="disabled")
+            
+            # Remove analysis if it exists as the sentence has changed
+            if hasattr(self.frame, 'analysis'):
+                delattr(self.frame, 'analysis')
+            
+            # Adjust text height
+            self.parent._adjust_text_height(text_widget)
         
         self.destroy()

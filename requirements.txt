@@ -4,3 +4,5 @@ pyinstaller
 python-docx
 pyyaml
 requests
+llama-cpp-python
+tqdm

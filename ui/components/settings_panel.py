@@ -11,6 +11,9 @@ class SettingsPanel(ttk.LabelFrame):
         self.language_change_callback = language_change_callback
         self.main_window = main_window
         
+        # Define default API URL options
+        self.DEFAULT_API_URLS = ["http://127.0.0.1:11434/api/generate", "GGUF Models"]
+        
         # Version Label
         self.version_label = ttk.Label(self, text=f"v{VERSION}", foreground="gray")
         self.version_label.grid(row=0, column=0, padx=5, sticky=tk.W)
@@ -24,11 +27,23 @@ class SettingsPanel(ttk.LabelFrame):
         self.language_select.grid(row=0, column=2, padx=5)
         self.language_select.bind('<<ComboboxSelected>>', self._on_language_change)
         
-        # API URL Entry
+        # API URL Entry with dropdown
         self.api_url_label = ttk.Label(self, text=get_translation(language, "api_url"))
         self.api_url_label.grid(row=0, column=3, padx=5)
-        self.api_url_var = tk.StringVar(value=self.api_service.api_url)
-        self.api_url_entry = ttk.Entry(self, textvariable=self.api_url_var, width=40)
+        self.api_url_var = tk.StringVar(value=self._get_display_api_url())
+        
+        # Determine dropdown options - always include defaults and add current if it's different
+        self.api_url_options = self.DEFAULT_API_URLS.copy()
+        current_api_url = self.api_service.api_url
+        # If the current URL is "models", display it as "GGUF Models"
+        display_url = "GGUF Models" if current_api_url == "models" else current_api_url
+        
+        # Add the current URL to options if it's not one of the defaults
+        if display_url not in self.api_url_options:
+            self.api_url_options.append(display_url)
+        
+        self.api_url_entry = ttk.Combobox(self, textvariable=self.api_url_var, width=40, 
+                                         values=self.api_url_options, state="readonly")
         self.api_url_entry.grid(row=0, column=4, padx=5)
         
         # Model Selection
@@ -88,15 +103,84 @@ class SettingsPanel(ttk.LabelFrame):
     
     def _on_api_url_change(self, *args):
         """Handle API URL changes and notify parent."""
-        self.api_service.api_url = self.api_url_var.get()
+        display_url = self.api_url_var.get()
+        internal_url = self._get_internal_api_url(display_url)
+        
+        # Set the actual backend value
+        self.api_service.api_url = internal_url
+        
+        # Always check server status and update models when API URL changes
+        # First clear the current model list
+        self.model_select["values"] = []
+        self.status_label.config(
+            text=get_translation(self.language, "server_status_checking"),
+            foreground="gray"
+        )
+        self.update()
+        
+        # Fetch models first, before checking server status
+        self.api_service.fetch_models()
+        self.update_model_list(self.api_service.available_models)
+        
+        # For GGUF Models, we need to select a model first before checking server
+        if internal_url == "models" and self.api_service.available_models:
+            # Only set the model if it's not already set or not in the available models
+            if (not self.model_var.get() or 
+                self.model_var.get() not in self.api_service.available_models):
+                self.model_var.set(self.api_service.available_models[0])
+        
+        # Now check server status (after model selection for GGUF Models)
+        server_status = self.api_service.check_server_status(show_message=False, parent_window=self.main_window.root)
+        
+        # Update status display
+        if server_status:
+            self.status_label.config(
+                text=get_translation(self.language, "server_status_connected"),
+                foreground="green"
+            )
+        else:
+            self.status_label.config(
+                text=get_translation(self.language, "server_status_not_connected"),
+                foreground="red"
+            )
         
         # Notify parent window if available
         if hasattr(self.master, 'master') and hasattr(self.master.master, 'on_api_url_change'):
-            self.master.master.on_api_url_change(self.api_url_var.get())
+            self.master.master.on_api_url_change(internal_url)
     
     def _on_model_change(self, *args):
         """Handle model changes and notify parent."""
+        if not self.model_var.get():
+            return  # Don't process empty model selections
+            
         self.api_service.model = self.model_var.get()
+        
+        # If using local models (GGUF), check server status to load the model
+        if self.api_service.api_url == "models":
+            # Update status to checking
+            self.status_label.config(
+                text=get_translation(self.language, "server_status_checking"),
+                foreground="gray"
+            )
+            self.update()
+            
+            # Check server (which will load the model)
+            server_status = self.api_service.check_server_status(
+                show_message=False, 
+                parent_window=self.main_window.root
+            )
+            
+            # Update status display
+            if server_status:
+                self.status_label.config(
+                    text=get_translation(self.language, "server_status_connected"),
+                    foreground="green"
+                )
+            else:
+                self.status_label.config(
+                    text=get_translation(self.language, "server_status_not_connected"),
+                    foreground="red"
+                )
         
         # Notify parent window if available
         if hasattr(self.master, 'master') and hasattr(self.master.master, 'on_model_change'):
@@ -114,13 +198,17 @@ class SettingsPanel(ttk.LabelFrame):
             custom_generation_prompt = settings_service.external_generation_prompt
             custom_analysis_prompt = settings_service.external_analysis_prompt
             custom_tense_prompt = settings_service.external_tense_prompt
+            custom_analysis_tense_prompt = settings_service.external_analysis_tense_prompt
+            custom_context_attachment_prompt = settings_service.external_context_attachment_prompt
             
             # Only switch to custom if values exist and are not empty
-            if custom_generation_prompt or custom_analysis_prompt or custom_tense_prompt:
+            if custom_generation_prompt or custom_analysis_prompt or custom_tense_prompt or custom_analysis_tense_prompt or custom_context_attachment_prompt:
                 # Store current values in settings service
                 settings_service.settings["generation_prompt"] = custom_generation_prompt if custom_generation_prompt else DEFAULT_CONFIG["generation_prompt"]
                 settings_service.settings["analysis_prompt"] = custom_analysis_prompt if custom_analysis_prompt else DEFAULT_CONFIG["analysis_prompt"]
                 settings_service.settings["tense_prompt"] = custom_tense_prompt if custom_tense_prompt else DEFAULT_CONFIG["tense_prompt"]
+                settings_service.settings["analysis_tense_prompt"] = custom_analysis_tense_prompt if custom_analysis_tense_prompt else DEFAULT_CONFIG["analysis_tense_prompt"]
+                settings_service.settings["context_attachment_prompt"] = custom_context_attachment_prompt if custom_context_attachment_prompt else DEFAULT_CONFIG["context_attachment_prompt"]
             else:
                 # If no custom prompts, stay on default and don't toggle
                 self.using_custom_prompt = False
@@ -129,7 +217,8 @@ class SettingsPanel(ttk.LabelFrame):
             settings_service.settings["generation_prompt"] = DEFAULT_CONFIG["generation_prompt"]
             settings_service.settings["analysis_prompt"] = DEFAULT_CONFIG["analysis_prompt"]
             settings_service.settings["tense_prompt"] = DEFAULT_CONFIG["tense_prompt"]
-        
+            settings_service.settings["analysis_tense_prompt"] = DEFAULT_CONFIG["analysis_tense_prompt"]
+            settings_service.settings["context_attachment_prompt"] = DEFAULT_CONFIG["context_attachment_prompt"]
         # Update the prompt status label
         self.update_prompt_status()
     
@@ -147,7 +236,7 @@ class SettingsPanel(ttk.LabelFrame):
             )
     
     def check_server_status(self):
-        if self.api_service.check_server_status():
+        if self.api_service.check_server_status(parent_window=self.main_window.root):
             self.status_label.config(
                 text=get_translation(self.language, "server_status_connected"),
                 foreground="green"
@@ -264,3 +353,15 @@ class SettingsPanel(ttk.LabelFrame):
         if hasattr(self, 'direct_update_btn'):
             self.direct_update_btn.destroy()
             delattr(self, 'direct_update_btn')
+    
+    def _get_display_api_url(self):
+        """Convert internal API URL to display URL"""
+        if self.api_service.api_url == "models":
+            return "GGUF Models"
+        return self.api_service.api_url
+        
+    def _get_internal_api_url(self, display_url):
+        """Convert display URL to internal API URL"""
+        if display_url == "GGUF Models":
+            return "models"
+        return display_url
