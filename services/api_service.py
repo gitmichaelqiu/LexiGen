@@ -140,10 +140,6 @@ class APIService:
                             if loading_window.winfo_exists():
                                 loading_window.after(100, loading_window.destroy)
                                 
-                            # Schedule a re-check of server status to update the UI label after 1 second
-                            if parent_window:
-                                parent_window.after(1000, lambda: self.check_server_status(show_message=False, parent_window=parent_window))
-                            
                             # Update UI - first in main window's settings panel
                             if parent_window and hasattr(parent_window, 'update_server_status_display'):
                                 parent_window.after(200, parent_window.update_server_status_display)
@@ -188,11 +184,18 @@ class APIService:
                                         get_translation(self.language, "server_status_title"),
                                         get_translation(self.language, "local_model_error_msg").format(error=str(e))
                                     ))
+                        finally:
+                            # Always check server status at the very end, after everything else
+                            pass
                     
                     # Start loading thread
                     thread = threading.Thread(target=load_model_thread)
                     thread.daemon = True
                     thread.start()
+
+                    if parent_window:
+                        parent_window.after(100, lambda: self.check_server_status(show_message=False, parent_window=parent_window))
+
                     return True
                 else:
                     # Load without UI feedback (silent)
