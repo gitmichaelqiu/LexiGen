@@ -68,6 +68,9 @@ class SentenceWidgetManager(ttk.LabelFrame):
         self.sentences_container.bind('<Configure>', self._on_frame_configure)
         self.canvas.bind('<Configure>', self._on_canvas_configure)
         
+        # Bind to resize event
+        self.bind('<Configure>', self._on_resize)
+        
         # Platform specific mousewheel bindings
         self._bind_mouse_wheel()
         
@@ -113,11 +116,46 @@ class SentenceWidgetManager(ttk.LabelFrame):
     
     def _on_frame_configure(self, event=None):
         """Update the scrollregion to encompass the inner frame."""
+        # First, ensure the sentences_container is properly configured
+        if self.sentences_container.winfo_exists():
+            self.sentences_container.columnconfigure(0, weight=1)  # Make sure it uses full width
+            
+            # Make sure all sentence frames are properly configured
+            for frame in self.sentence_widgets:
+                if frame.winfo_exists():
+                    frame.grid(sticky=(tk.W, tk.E))
+                    frame.columnconfigure(1, weight=1)
+        
+        # Update the scroll region
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
     
     def _on_canvas_configure(self, event):
         """Resize the inner frame to match the canvas."""
         self.canvas.itemconfig(self.canvas_frame, width=event.width)
+    
+    def _on_resize(self, event):
+        """Handle resize events to ensure frames stretch properly."""
+        # Skip if resize wasn't caused by a true window resize
+        if event.width == self._last_width if hasattr(self, '_last_width') else False:
+            return
+            
+        # Save current width for future comparisons
+        self._last_width = event.width
+        
+        # Update all sentence frames to ensure they stretch properly
+        for frame in self.sentence_widgets:
+            if frame.winfo_exists():
+                frame.grid(sticky=(tk.W, tk.E))
+                frame.columnconfigure(1, weight=1)
+                
+                # Ensure text widgets stretch to fill the frame
+                for child in frame.winfo_children():
+                    if isinstance(child, tk.Text):
+                        child.grid(sticky=(tk.W, tk.E))
+        
+        # Force canvas to update its layout
+        self._on_frame_configure()
+        self.canvas.update_idletasks()
     
     def _on_mousewheel(self, event):
         """Legacy method, replaced by platform-specific methods."""
@@ -154,6 +192,9 @@ class SentenceWidgetManager(ttk.LabelFrame):
                             selectforeground=text_widget.cget("foreground"), 
                             inactiveselectbackground=text_widget.cget("background"))
         text_widget.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 5))
+        
+        # Ensure the parent frame properly configures column weights for stretching
+        frame.columnconfigure(1, weight=1)  # Make text column expandable
         
         # Bind to prevent text selection
         for seq in ["<Button-1>", "<B1-Motion>", "<Double-Button-1>", "<Triple-Button-1>"]:
@@ -1061,6 +1102,23 @@ class SentenceWidgetManager(ttk.LabelFrame):
             
             # Update button states
             self._update_buttons_state()
+            
+            # Configure sentence frames to stretch properly
+            for frame in self.sentence_widgets:
+                # Ensure each frame is configured to stretch horizontally
+                frame.grid(sticky=(tk.W, tk.E))
+                frame.columnconfigure(1, weight=1)  # Text column stretches
+            
+            # Force update of the canvas and container
+            self.sentences_container.update_idletasks()
+            self._on_frame_configure()
+            self.canvas.update_idletasks()
+            
+            # Update canvas width to match container width if needed
+            canvas_width = self.canvas.winfo_width()
+            container_width = self.sentences_container.winfo_reqwidth()
+            if container_width > canvas_width:
+                self.canvas.itemconfig(self.canvas_frame, width=container_width)
             
         except Exception as e:
             messagebox.showerror(
