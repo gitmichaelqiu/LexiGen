@@ -96,6 +96,12 @@ class MainWindow:
         # Bind Ctrl/Cmd + E to export
         self.root.bind(f"<{modifier}-e>", lambda event: self.sentence_manager.export_docx())
         
+        # Bind Ctrl/Cmd + S to save history
+        self.root.bind(f"<{modifier}-s>", lambda event: self.sentence_manager.save_history())
+        
+        # Bind Ctrl/Cmd + L to load history
+        self.root.bind(f"<{modifier}-l>", lambda event: self.sentence_manager.load_history())
+        
         # Bind Ctrl/Cmd + / to show/hide all
         self.root.bind(f"<{modifier}-slash>", lambda event: self.sentence_manager.show_all_words())
         

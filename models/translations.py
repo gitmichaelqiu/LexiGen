@@ -119,7 +119,16 @@ TRANSLATIONS = {
         "local_model_loaded_msg": "Successfully loaded local model: {model}",
         "local_model_error_msg": "Failed to load local model. Error: {error}",
         "local_model_not_found_msg": "Local model file not found: {model}",
-        "local_models_dir_error_msg": "Local models directory not found. Please place GGUF models in LexiGenAssets/models directory."
+        "local_models_dir_error_msg": "Local models directory not found. Please place GGUF models in LexiGenAssets/models directory.",
+        "menu_button_main": "Menu",
+        "save_history": "Save History",
+        "load_history": "Load History",
+        "save_history_title": "Save History",
+        "load_history_title": "Load History",
+        "history_save_success": "History saved successfully!",
+        "history_load_success": "History loaded successfully!",
+        "history_load_error": "Failed to load history: {error}",
+        "no_sentences_to_save": "No sentences to save!"
     },
     "简体中文": {
         "settings": "设置",
@@ -236,7 +245,16 @@ TRANSLATIONS = {
         "local_model_loaded_msg": "成功加载本地模型: {model}",
         "local_model_error_msg": "加载本地模型失败。错误: {error}",
         "local_model_not_found_msg": "找不到本地模型文件: {model}",
-        "local_models_dir_error_msg": "找不到本地模型目录。请将GGUF模型放置在LexiGenAssets/models目录中。"
+        "local_models_dir_error_msg": "找不到本地模型目录。请将GGUF模型放置在LexiGenAssets/models目录中。",
+        "menu_button_main": "菜单",
+        "save_history": "保存历史",
+        "load_history": "加载历史",
+        "save_history_title": "保存历史",
+        "load_history_title": "加载历史",
+        "history_save_success": "历史保存成功！",
+        "history_load_success": "历史加载成功！",
+        "history_load_error": "加载历史失败：{error}",
+        "no_sentences_to_save": "没有可保存的句子！"
     }
 }
 
