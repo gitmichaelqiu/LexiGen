@@ -20,8 +20,9 @@ hiddenimports = collect_submodules('llama_cpp')
 
 # Append the additional .dll or .so file
 if os.name == 'nt':  # Windows
-    dll_path = os.path.join(package_path, 'llama_cpp', 'llama.dll')
-    datas.append((dll_path, 'llama_cpp'))
+    for fname in os.listdir(package_path):
+        if fname.endswith('.dll') or fname.endswith('.pyd'):
+            datas.append((os.path.join(package_path, fname), 'llama_cpp'))
 elif sys.platform == 'darwin':  # Mac
     lib_dir = os.path.join(package_path, 'lib')
     for fname in os.listdir(lib_dir):

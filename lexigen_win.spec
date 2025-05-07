@@ -5,7 +5,7 @@ block_cipher = None
 a = Analysis(
     ['main.py'],
     pathex=[],
-    binaries=[],
+    binaries=[collect_dynamic_libs('llama_cpp')],
     datas=[
         ('icons/Lexi.png', '.'),
         ('icons/Lexi.ico', 'icons'),
@@ -37,13 +37,17 @@ a = Analysis(
         'models.updater',
         'yaml',
         'pyyaml',
+        'llama_cpp',
+        'llama_cpp.llama_cpp',
+        'llama_cpp._ctypes_extensions',
+        'llama_cpp.llama_grammar', 
+        'numpy',
     ],
-    hookspath=[],
+    hookspath=['hooks'],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
         'matplotlib',
-        'numpy',
         'pandas',
         'scipy',
         'PIL',
@@ -84,4 +88,15 @@ exe = EXE(
     entitlements_file=None,
     icon='icons/Lexi.ico',
     version='file_version_info.txt'
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='LexiGen',
 ) 
