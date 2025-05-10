@@ -90,7 +90,7 @@ LexiGen 现在支持直接使用本地GGUF模型，无需安装Ollama:
 
 ### 安装
 
-1. 从 [GitHub](https://github.com/gitmichaelqiu/LexiGen/releases/) 或 [蓝奏云盘](https://wwtm.lanzouq.com/b00uyomyxe) (密码：8hpe) 下载
+1. 从 [GitHub](https://github.com/gitmichaelqiu/LexiGen/releases/) 或 [天翼云盘](https://cloud.189.cn/web/share?code=jY3MBja26fam) (访问码：jbx7) 下载
 2. 选择您平台的对应版本
 3. 启动 LexiGen
 
