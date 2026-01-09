@@ -97,6 +97,13 @@ LexiGen now supports using local GGUF models directly, without requiring Ollama:
 2. Run the installer for your platform
 3. Launch LexiGen
 
+## Hotkeys
+
+- **Generate**: Shift + Enter
+- **Append**: Enter
+- **Show/Hide All**: Ctrl/Cmd + /
+- **Export to Word**: Ctrl/Cmd + E
+
 ## 💡 Customization
 
 You can customize your prompts! Check the guide [Customize Prompts](https://gitmichaelqiu.github.io/my-projects/lexigen/customize-prompts/).
